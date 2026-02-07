@@ -17,5 +17,5 @@
     "src/app/home.jsx",
     "src/app/index.jsx",
     "nativewind-env.d.ts"
-, "src/app/metro.config.js", "src/app/tracker.jsx"  ]
+, "src/app/metro.config.js", "src/app/tracker.jsx", "src/app/camera.jsx"  ]
 }
