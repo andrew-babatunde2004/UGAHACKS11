@@ -3,15 +3,17 @@ import { useRef } from "react";
 import { Text, View, StyleSheet, Platform, StatusBar } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Feather } from "@expo/vector-icons";
+import { cssInterop } from "react-native-css-interop";
 
 // We wrap the camera logic to prevent top-level imports of react-native-vision-camera
 // which crashes on the web even if the component isn't rendered.
 const CameraView = () => {
   // Lazy load native modules
   const { Camera, useCameraDevice, useCameraPermission, useCodeScanner } = require("react-native-vision-camera");
-
-  const camera = useRef<any>(null);
-  const { hasPermission } = useCameraPermission();
+  
+  cssInterop(Camera, {className: "style"});
+  const camera = useRef(null);
+  const { hasPermission} = useCameraPermission();
   const device = useCameraDevice("back");
 
   const takePicture = async () => {
@@ -25,7 +27,7 @@ const CameraView = () => {
 
   const codeScanner = useCodeScanner({
     codeTypes: ["qr", "ean-13"],
-    onCodeScanned: (codes: any[]) => {
+    onCodeScanned: (codes ) => {
       for (const code of codes) {
         console.log(`Scanned ${code.value} codes!`);
       }
@@ -40,16 +42,19 @@ const CameraView = () => {
 
   return (
     <>
-      <SafeAreaView style={styles.container}>
+      <SafeAreaView className="flex-1">
+      
         <Camera
           ref={camera}
           codeScanner={codeScanner}
           photo={true}
-          style={{ flex: 1 }}
+          className="flex-1"
           device={device}
           isActive
         />
+      
       </SafeAreaView>
+      
       <View
         style={{
           flex: 1.1,
