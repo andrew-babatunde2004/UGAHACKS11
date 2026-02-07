@@ -1,7 +1,6 @@
 import React, { useState } from "react";
 import {
   ActionSheetIOS,
-  Button,
   Text,
   View,
   FlatList,
