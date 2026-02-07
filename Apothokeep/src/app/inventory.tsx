@@ -1,15 +1,17 @@
+import React from "react";
 import { Text, View } from "react-native";
 
-export default function Index() {
+export default function Inventory() {
   return (
     <View
       style={{
         flex: 1,
         justifyContent: "center",
         alignItems: "center",
+        backgroundColor: "green"
       }}
     >
-      <Text>Edit app/index.tsx to edit this screen.</Text>
+      <Text>Home Screen</Text>
     </View>
   );
 }

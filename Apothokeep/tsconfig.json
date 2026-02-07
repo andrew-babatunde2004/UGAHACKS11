@@ -13,6 +13,9 @@
     "**/*.ts",
     "**/*.tsx",
     ".expo/types/**/*.ts",
-    "expo-env.d.ts"
-  ]
+    "expo-env.d.ts",
+    "src/app/home.jsx",
+    "src/app/index.jsx",
+    "nativewind-env.d.ts"
+, "src/app/metro.config.js", "src/app/tracker.jsx"  ]
 }
