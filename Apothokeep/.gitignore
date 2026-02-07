@@ -42,8 +42,3 @@ app-example
 /ios
 /android
 
-#camera code
-camera.tsx
-
-# environment variables
-src/.env
