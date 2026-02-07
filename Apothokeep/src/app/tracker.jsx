@@ -10,7 +10,7 @@ export default function Tracker() {
         backgroundColor: "red"
       }}
     >
-      <Text>Tracker Screen</Text>
+      <Text>Edit app/index.tsx to edit this screen.</Text> 
     </View>
   );
 }
