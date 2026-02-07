@@ -44,7 +44,7 @@ export default function InventoryScreen() {
         userInterfaceStyle: 'dark',
       }, (buttonIndex) => {
         if (buttonIndex === 1) {
-          router.push("/camera");
+          router.push("/camera" as any);
         } else if (buttonIndex === 2) {
           setModalVisible(true);
         }
@@ -56,7 +56,7 @@ export default function InventoryScreen() {
         "Choose an option",
         [
           { text: "Cancel", style: "cancel" },
-          { text: "Take Photo", onPress: () => router.push("/camera") },
+          { text: "Take Photo", onPress: () => router.push("/camera" as any) },
           { text: "Manual Entry", onPress: () => setModalVisible(true) },
         ]
       );
