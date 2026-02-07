@@ -10,16 +10,23 @@ import { cssInterop } from "react-native-css-interop";
 const CameraView = () => {
   // Lazy load native modules
   const { Camera, useCameraDevice, useCameraPermission, useCodeScanner } = require("react-native-vision-camera");
-  
-  cssInterop(Camera, {className: "style"});
+  const { useRouter } = require("expo-router");
+  const { TouchableOpacity } = require("react-native");
+
+  cssInterop(Camera, { className: "style" });
+
   const camera = useRef(null);
-  const { hasPermission} = useCameraPermission();
+  const { hasPermission } = useCameraPermission();
   const device = useCameraDevice("back");
+  const router = useRouter();
+  const [isScanning, setIsScanning] = React.useState(true);
 
   const takePicture = async () => {
     try {
       if (camera.current == null) throw new Error("Camera is Null");
-      // take photo logic here
+      const photo = await camera.current.takePhoto();
+      console.log(photo);
+      // Logic to handle photo (e.g., save or navigate) could go here
     } catch (e) {
       console.log(e);
     }
@@ -27,9 +34,11 @@ const CameraView = () => {
 
   const codeScanner = useCodeScanner({
     codeTypes: ["qr", "ean-13"],
-    onCodeScanned: (codes ) => {
-      for (const code of codes) {
-        console.log(`Scanned ${code.value} codes!`);
+    onCodeScanned: (codes) => {
+      if (isScanning && codes.length > 0) {
+        setIsScanning(false); // Prevent multiple triggers
+        console.log(`Scanned ${codes[0].value} code!`);
+        router.back();
       }
     },
   });
@@ -41,31 +50,40 @@ const CameraView = () => {
   );
 
   return (
-    <>
-      <SafeAreaView className="flex-1">
-      
-        <Camera
-          ref={camera}
-          codeScanner={codeScanner}
-          photo={true}
-          className="flex-1"
-          device={device}
-          isActive
-        />
-      
+    <View className="flex-1 bg-black">
+      <StatusBar hidden />
+      <Camera
+        ref={camera}
+        codeScanner={codeScanner}
+        photo={true}
+        className="flex-1"
+        device={device}
+        isActive={true}
+      />
+
+      {/* Overlay Controls */}
+      <SafeAreaView className="absolute w-full h-full flex-col justify-between p-6" pointerEvents="box-none">
+        {/* Top Section: Cancel Button */}
+        <View className="flex-row justify-start pt-4">
+          <TouchableOpacity
+            onPress={() => router.back()}
+            className="w-10 h-10 rounded-full bg-black/40 items-center justify-center border border-white/20"
+          >
+            <Feather name="x" size={24} color="white" />
+          </TouchableOpacity>
+        </View>
+
+        {/* Bottom Section: Take Picture Button */}
+        <View className="items-center pb-8">
+          <TouchableOpacity
+            onPress={takePicture}
+            className="w-20 h-20 rounded-full border-4 border-white items-center justify-center"
+          >
+            <View className="w-16 h-16 rounded-full bg-white" />
+          </TouchableOpacity>
+        </View>
       </SafeAreaView>
-      
-      <View
-        style={{
-          flex: 1.1,
-          flexDirection: "row",
-          justifyContent: "space-evenly",
-          alignItems: "center",
-        }}
-      >
-        <Text>Bottom Section</Text>
-      </View>
-    </>
+    </View>
   );
 };
 

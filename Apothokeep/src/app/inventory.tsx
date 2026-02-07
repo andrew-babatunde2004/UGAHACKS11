@@ -30,6 +30,26 @@ export default function InventoryScreen() {
   // Start with empty inventory
   const [items, setItems] = useState<InventoryItem[]>([]);
   const [result, setResult] = useState('test camera');
+  const scanAndAdddFoodItem = async (barcode) => {
+    try {
+      const response = await fetch( {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+        barcode,
+        purchaseDate: new Date().toISOString()
+      })
+    });
+    const data = await response.json();
+    if (data.success) {
+      Alert.alert("Success", "Item added to inventory");
+    } else {
+      Alert.alert("Error", "Failed to add item to inventory");
+    }
+    }
+  }
 
   // State for Modal
   const [modalVisible, setModalVisible] = useState(false);
