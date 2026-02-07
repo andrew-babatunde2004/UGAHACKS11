@@ -1,6 +1,6 @@
 import * as React from "react";
 import { useRef } from "react";
-import { Text, View, StyleSheet, Platform, StatusBar } from "react-native";
+import { Text, View, StyleSheet, Platform, StatusBar, TouchableOpacity } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Feather } from "@expo/vector-icons";
 import { cssInterop } from "react-native-css-interop";
@@ -10,38 +10,39 @@ import { cssInterop } from "react-native-css-interop";
 const CameraView = () => {
   // Lazy load native modules
   const { Camera, useCameraDevice, useCameraPermission, useCodeScanner } = require("react-native-vision-camera");
-  const { useRouter } = require("expo-router");
-  const { TouchableOpacity } = require("react-native");
-
-  cssInterop(Camera, { className: "style" });
-
+  
+  cssInterop(Camera, {className: "style"});
   const camera = useRef(null);
-  const { hasPermission } = useCameraPermission();
+  const { hasPermission} = useCameraPermission();
   const device = useCameraDevice("back");
-  const router = useRouter();
-  const [isScanning, setIsScanning] = React.useState(true);
+  const lastScannedRef = useRef(null);
 
   const takePicture = async () => {
     try {
       if (camera.current == null) throw new Error("Camera is Null");
-      const photo = await camera.current.takePhoto();
-      console.log(photo);
-      // Logic to handle photo (e.g., save or navigate) could go here
+      // take photo logic here
     } catch (e) {
       console.log(e);
     }
   };
 
   const codeScanner = useCodeScanner({
-    codeTypes: ["qr", "ean-13"],
-    onCodeScanned: (codes) => {
-      if (isScanning && codes.length > 0) {
-        setIsScanning(false); // Prevent multiple triggers
-        console.log(`Scanned ${codes[0].value} code!`);
-        router.back();
-      }
-    },
-  });
+  codeTypes: ["qr", "ean-13"],
+  onCodeScanned: async (codes) => {
+    for (const code of codes) {
+      if (code.value === lastScannedRef.current) continue;
+
+      lastScannedRef.current = code.value;
+
+      const res = await fetch(
+        `https://world.openfoodfacts.org/api/v0/product/${code.value}.json`
+      );
+      const data = await res.json();
+      console.log(data);
+    }
+  },
+});
+
 
   if (device == null) return (
     <View style={styles.container}>
@@ -50,18 +51,21 @@ const CameraView = () => {
   );
 
   return (
-    <View className="flex-1 bg-black">
-      <StatusBar hidden />
-      <Camera
-        ref={camera}
-        codeScanner={codeScanner}
-        photo={true}
-        className="flex-1"
-        device={device}
-        isActive={true}
-      />
-
-      {/* Overlay Controls */}
+    <>
+      <SafeAreaView className="flex-1">
+      
+        <Camera
+          ref={camera}
+          codeScanner={codeScanner}
+          photo={true}
+          className="flex-1"
+          device={device}
+          isActive
+        />
+      
+      </SafeAreaView>
+      
+     {/* Overlay Controls */}
       <SafeAreaView className="absolute w-full h-full flex-col justify-between p-6" pointerEvents="box-none">
         {/* Top Section: Cancel Button */}
         <View className="flex-row justify-start pt-4">
@@ -83,7 +87,7 @@ const CameraView = () => {
           </TouchableOpacity>
         </View>
       </SafeAreaView>
-    </View>
+      </>
   );
 };
 
