@@ -44,3 +44,6 @@ app-example
 
 #camera code
 camera.tsx
+
+# environment variables
+src/.env
