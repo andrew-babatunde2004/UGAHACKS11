@@ -1,5 +1,7 @@
 import React, { useState } from "react";
 import {
+  ActionSheetIOS,
+  Button,
   Text,
   View,
   FlatList,
@@ -12,12 +14,29 @@ import {
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 
+
 // Define the type for an inventory item
 interface InventoryItem {
   id: string;
   name: string;
   quantity: number;
 }
+
+
+const [result, setResult] = useState('test camera');
+
+const onPress = () => 
+  ActionSheetIOS.showActionSheetWithOptions({
+    options: ['Cancel', 'Take Photo', 'Manual Entry'],
+    cancelButtonIndex: 0,
+    userInterfaceStyle: 'dark',
+  }, (buttonIndex) => {
+    if (buttonIndex === 1) {
+      // Take Photo
+    } else if (buttonIndex === 2) {
+      // Manual Entry
+    }
+  });
 
 export default function InventoryScreen() {
   // Mock initial data
@@ -129,9 +148,10 @@ export default function InventoryScreen() {
                 <Text style={styles.buttonText}>Cancel</Text>
               </TouchableOpacity>
 
+              {/* replacing handleAddItem with onPress */}
               <TouchableOpacity
                 style={[styles.modalButton, styles.saveButton]}
-                onPress={handleAddItem}
+                onPress={onPress}
               >
                 <Text style={styles.buttonText}>Save</Text>
               </TouchableOpacity>

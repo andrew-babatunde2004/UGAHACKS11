@@ -1,4 +1,4 @@
-{/* import React from "react";
+import React from "react";
 import { Camera, useCameraDevice, useCameraPermission, } from "react-native-vision-camera" 
 import { Text, View , StyleSheet , Platform , StatusBar } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -59,4 +59,3 @@ const styles = StyleSheet.create({
   paddingTop: Platform.OS == "ios" ? StatusBar.currentHeight : 0,
 }
 });
-*/}
