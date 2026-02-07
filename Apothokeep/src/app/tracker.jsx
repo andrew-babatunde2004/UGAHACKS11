@@ -97,30 +97,7 @@ const PieSlice = ({ color, angle, startAngle, radius }) => {
         },
       ]}
     >
-      <View
-        style={[
-          styles.sliceClipper,
-          {
-            width: radius,
-            height: radius * 2,
-            left: radius, // Right half
-          },
-        ]}
-      >
-        <View
-          style={[
-            styles.sliceContent,
-            {
-              width: radius * 2,
-              height: radius * 2,
-              left: -radius,
-              backgroundColor: color,
-              borderRadius: radius,
-              transform: [{ rotate: `${angle - 180}deg` }],
-            },
-          ]}
-        />
-      </View>
+      <Text>Edit app/index.tsx to edit this screen.</Text>
     </View>
   );
 };

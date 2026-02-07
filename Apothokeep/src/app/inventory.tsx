@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import {
+  ActionSheetIOS,
   Text,
   View,
   FlatList,
@@ -8,10 +9,14 @@ import {
   TextInput,
   StatusBar,
   StyleSheet,
+  Alert,
+  Platform,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Feather } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
+import { Ionicons } from "@expo/vector-icons";
+import { useRouter } from "expo-router";
 
 // Define the type for an inventory item
 interface InventoryItem {
@@ -21,13 +26,42 @@ interface InventoryItem {
 }
 
 export default function InventoryScreen() {
+  const router = useRouter();
   // Start with empty inventory
   const [items, setItems] = useState<InventoryItem[]>([]);
+  const [result, setResult] = useState('test camera');
 
   // State for Modal
   const [modalVisible, setModalVisible] = useState(false);
   const [newItemName, setNewItemName] = useState("");
   const [newItemExpiration, setNewItemExpiration] = useState("");
+
+  const handleActionSheet = () => {
+    if (Platform.OS === 'ios') {
+      ActionSheetIOS.showActionSheetWithOptions({
+        options: ['Cancel', 'Take Photo', 'Manual Entry'],
+        cancelButtonIndex: 0,
+        userInterfaceStyle: 'dark',
+      }, (buttonIndex) => {
+        if (buttonIndex === 1) {
+          router.push("/camera");
+        } else if (buttonIndex === 2) {
+          setModalVisible(true);
+        }
+      });
+    } else {
+      // Android/Web Fallback
+      Alert.alert(
+        "Add Item",
+        "Choose an option",
+        [
+          { text: "Cancel", style: "cancel" },
+          { text: "Take Photo", onPress: () => router.push("/camera") },
+          { text: "Manual Entry", onPress: () => setModalVisible(true) },
+        ]
+      );
+    }
+  };
 
   // Function to add a new item
   const handleAddItem = () => {
@@ -106,7 +140,7 @@ export default function InventoryScreen() {
             ListEmptyComponent={
               <View className="items-center justify-center mt-20">
                 <View className="bg-white/80 p-6 rounded-full mb-4 shadow-sm">
-                  <Feather name="inbox" size={50} color="#166534" opacity={0.5} />
+                  <Feather name="inbox" size={50} color="#166534" style={{ opacity: 0.5 }} />
                 </View>
                 <Text className="text-lg text-gray-600 font-medium">Your inventory is empty</Text>
                 <Text className="text-sm text-gray-400 mt-2">Add items to track their freshness</Text>
@@ -118,7 +152,7 @@ export default function InventoryScreen() {
         {/* Add Button */}
         <TouchableOpacity
           className="absolute bottom-8 right-8 w-16 h-16 rounded-full bg-green-700 justify-center items-center shadow-lg shadow-green-900/40 active:scale-95 transition-transform border-4 border-white"
-          onPress={() => setModalVisible(true)}
+          onPress={handleActionSheet}
         >
           <Feather name="plus" size={32} color="white" />
         </TouchableOpacity>
@@ -171,6 +205,7 @@ export default function InventoryScreen() {
                   <Text className="text-gray-600 font-bold text-base">Cancel</Text>
                 </TouchableOpacity>
 
+                {/* replace handleAddItem with onPress figure out why it wont work ahaahahah*/}
                 <TouchableOpacity
                   className="flex-1 h-12 justify-center items-center rounded-xl bg-green-700 active:bg-green-800 shadow-lg shadow-green-700/30"
                   onPress={handleAddItem}
