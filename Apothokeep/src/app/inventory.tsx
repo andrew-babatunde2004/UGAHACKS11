@@ -3,35 +3,31 @@ import {
   Text,
   View,
   FlatList,
-  StyleSheet,
   TouchableOpacity,
   Modal,
   TextInput,
-  SafeAreaView,
   StatusBar,
+  StyleSheet,
 } from "react-native";
-import { Ionicons } from "@expo/vector-icons";
+import { SafeAreaView } from "react-native-safe-area-context";
+import { Feather } from "@expo/vector-icons";
+import { LinearGradient } from "expo-linear-gradient";
 
 // Define the type for an inventory item
 interface InventoryItem {
   id: string;
   name: string;
-  quantity: number;
+  expirationDate: string;
 }
 
 export default function InventoryScreen() {
-  // Mock initial data
-  const [items, setItems] = useState<InventoryItem[]>([
-    { id: "1", name: "Health Potion", quantity: 3 },
-    { id: "2", name: "Mana Potion", quantity: 2 },
-    { id: "3", name: "Antidote", quantity: 1 },
-    { id: "4", name: "Phoenix Down", quantity: 5 },
-  ]);
+  // Start with empty inventory
+  const [items, setItems] = useState<InventoryItem[]>([]);
 
   // State for Modal
   const [modalVisible, setModalVisible] = useState(false);
   const [newItemName, setNewItemName] = useState("");
-  const [newItemQuantity, setNewItemQuantity] = useState("");
+  const [newItemExpiration, setNewItemExpiration] = useState("");
 
   // Function to add a new item
   const handleAddItem = () => {
@@ -40,106 +36,153 @@ export default function InventoryScreen() {
       return;
     }
 
-    const quantity = parseInt(newItemQuantity) || 1;
-
     const newItem: InventoryItem = {
       id: Date.now().toString(),
       name: newItemName,
-      quantity: quantity,
+      expirationDate: newItemExpiration || "No Date",
     };
 
     setItems([...items, newItem]);
 
     // Reset and close modal
     setNewItemName("");
-    setNewItemQuantity("");
+    setNewItemExpiration("");
     setModalVisible(false);
+  };
+
+  // Function to delete an item
+  const handleDeleteItem = (id: string) => {
+    setItems(items.filter((item: InventoryItem) => item.id !== id));
   };
 
   // Render individual item
   const renderItem = ({ item }: { item: InventoryItem }) => (
-    <View style={styles.itemContainer}>
-      <View style={styles.itemIcon}>
-        <Ionicons name="cube-outline" size={24} color="#5A4033" />
+    <View className="flex-row bg-white p-4 rounded-xl mb-3 items-center shadow-sm border border-green-50">
+      <View className="w-12 h-12 rounded-full bg-green-50 justify-center items-center mr-4 border border-green-100">
+        <Feather name="box" size={20} color="#166534" />
       </View>
-      <View style={styles.itemDetails}>
-        <Text style={styles.itemName}>{item.name}</Text>
-        <Text style={styles.itemQuantity}>Qty: {item.quantity}</Text>
+      <View className="flex-1">
+        <Text className="text-lg font-bold text-gray-800">{item.name}</Text>
+        <Text className="text-sm text-gray-500 mt-1">
+          Expires: <Text className="text-green-700 font-medium">{item.expirationDate}</Text>
+        </Text>
       </View>
+      <TouchableOpacity
+        onPress={() => handleDeleteItem(item.id)}
+        className="p-3 bg-red-50 rounded-full active:bg-red-100"
+      >
+        <Feather name="trash-2" size={20} color="#dc2626" />
+      </TouchableOpacity>
     </View>
   );
 
   return (
-    <SafeAreaView style={styles.container}>
+    <View className="flex-1 bg-white">
+      <StatusBar barStyle="light-content" />
 
-      <View style={styles.header}>
-        <Text style={styles.headerTitle}>Inventory</Text>
-      </View>
-
-      <FlatList
-        data={items}
-        renderItem={renderItem}
-        keyExtractor={(item: { id: any; }) => item.id}
-        contentContainerStyle={styles.listContent}
-        ListEmptyComponent={
-          <View style={styles.emptyContainer}>
-            <Text style={styles.emptyText}>Your inventory is empty.</Text>
-          </View>
-        }
+      {/* Background Gradient */}
+      <LinearGradient
+        colors={['#166534', '#15803d', '#f0fdf4']}
+        style={{ position: 'absolute', left: 0, right: 0, top: 0, height: '100%' }}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 0, y: 0.3 }}
       />
 
-      <TouchableOpacity
-        style={styles.addButton}
-        onPress={() => setModalVisible(true)}
-      >
-        <Ionicons name="add" size={30} color="#FFF" />
-      </TouchableOpacity>
+      <SafeAreaView className="flex-1">
+        {/* Header */}
+        <View className="px-6 py-4 mb-2">
+          <Text className="text-3xl font-extrabold text-white tracking-wider shadow-sm">My Inventory</Text>
+          <Text className="text-green-100 text-xs font-medium tracking-widest uppercase">Manage Your Items</Text>
+        </View>
 
-      {/* Add Item Modal */}
-      <Modal
-        animationType="slide"
-        transparent={true}
-        visible={modalVisible}
-        onRequestClose={() => setModalVisible(false)}
-      >
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <Text style={styles.modalTitle}>Add New Item</Text>
+        {/* List Content */}
+        <View className="flex-1 px-4">
+          <FlatList
+            data={items}
+            renderItem={renderItem}
+            keyExtractor={(item: InventoryItem) => item.id}
+            contentContainerStyle={{ paddingBottom: 100, paddingTop: 10 }}
+            showsVerticalScrollIndicator={false}
+            ListEmptyComponent={
+              <View className="items-center justify-center mt-20">
+                <View className="bg-white/80 p-6 rounded-full mb-4 shadow-sm">
+                  <Feather name="inbox" size={50} color="#166534" opacity={0.5} />
+                </View>
+                <Text className="text-lg text-gray-600 font-medium">Your inventory is empty</Text>
+                <Text className="text-sm text-gray-400 mt-2">Add items to track their freshness</Text>
+              </View>
+            }
+          />
+        </View>
 
-            <TextInput
-              style={styles.input}
-              placeholder="Item Name (e.g., Elixir)"
-              value={newItemName}
-              onChangeText={setNewItemName}
-            />
+        {/* Add Button */}
+        <TouchableOpacity
+          className="absolute bottom-8 right-8 w-16 h-16 rounded-full bg-green-700 justify-center items-center shadow-lg shadow-green-900/40 active:scale-95 transition-transform border-4 border-white"
+          onPress={() => setModalVisible(true)}
+        >
+          <Feather name="plus" size={32} color="white" />
+        </TouchableOpacity>
 
-            <TextInput
-              style={styles.input}
-              placeholder="Quantity (e.g., 1)"
-              value={newItemQuantity}
-              onChangeText={setNewItemQuantity}
-              keyboardType="numeric"
-            />
+        {/* Add Item Modal */}
+        <Modal
+          animationType="fade"
+          transparent={true}
+          visible={modalVisible}
+          onRequestClose={() => setModalVisible(false)}
+        >
+          <View className="flex-1 bg-black/60 justify-center items-center px-6">
+            <View className="w-full bg-white rounded-3xl p-6 shadow-2xl">
+              <View className="flex-row justify-between items-center mb-6">
+                <Text className="text-2xl font-bold text-gray-800">Add New Item</Text>
+                <TouchableOpacity onPress={() => setModalVisible(false)}>
+                  <Feather name="x" size={24} color="#9ca3af" />
+                </TouchableOpacity>
+              </View>
 
-            <View style={styles.modalButtons}>
-              <TouchableOpacity
-                style={[styles.modalButton, styles.cancelButton]}
-                onPress={() => setModalVisible(false)}
-              >
-                <Text style={styles.buttonText}>Cancel</Text>
-              </TouchableOpacity>
+              <View className="space-y-4 mb-6">
+                <View>
+                  <Text className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2 ml-1">Item Name</Text>
+                  <TextInput
+                    className="w-full h-12 border border-gray-200 rounded-xl px-4 bg-gray-50 text-gray-800"
+                    placeholder="e.g., Milk, Eggs, Bread"
+                    placeholderTextColor="#9ca3af"
+                    value={newItemName}
+                    onChangeText={setNewItemName}
+                  />
+                </View>
 
-              <TouchableOpacity
-                style={[styles.modalButton, styles.saveButton]}
-                onPress={handleAddItem}
-              >
-                <Text style={styles.buttonText}>Save</Text>
-              </TouchableOpacity>
+                <View>
+                  <Text className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2 ml-1">Expiration Date</Text>
+                  <TextInput
+                    className="w-full h-12 border border-gray-200 rounded-xl px-4 bg-gray-50 text-gray-800"
+                    placeholder="e.g., 2024-12-31 or 1 week"
+                    placeholderTextColor="#9ca3af"
+                    value={newItemExpiration}
+                    onChangeText={setNewItemExpiration}
+                  />
+                </View>
+              </View>
+
+              <View className="flex-row gap-4">
+                <TouchableOpacity
+                  className="flex-1 h-12 justify-center items-center rounded-xl bg-gray-100 active:bg-gray-200"
+                  onPress={() => setModalVisible(false)}
+                >
+                  <Text className="text-gray-600 font-bold text-base">Cancel</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  className="flex-1 h-12 justify-center items-center rounded-xl bg-green-700 active:bg-green-800 shadow-lg shadow-green-700/30"
+                  onPress={handleAddItem}
+                >
+                  <Text className="text-white font-bold text-base">Save Item</Text>
+                </TouchableOpacity>
+              </View>
             </View>
           </View>
-        </View>
-      </Modal>
-    </SafeAreaView>
+        </Modal>
+      </SafeAreaView>
+    </View>
   );
 }
 
