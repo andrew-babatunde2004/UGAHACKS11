@@ -1,4 +1,4 @@
-import { View, Text, TouchableOpacity, StatusBar, ImageBackground } from "react-native";
+import { View, Text, TouchableOpacity, StatusBar, Image } from "react-native";
 import { Link, Stack } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Feather } from "@expo/vector-icons";
@@ -29,28 +29,30 @@ export default function Index() {
             <Text className="text-[#E3DCD6] text-xs font-medium tracking-widest uppercase">Freshness Tracker</Text>
           </View>
 
-          <TouchableOpacity className="bg-white/20 px-6 py-2.5 rounded-full border border-white/30 active:bg-white/30 backdrop-blur-md">
-            <Text className="text-white font-bold text-sm">Sign In</Text>
-          </TouchableOpacity>
+          <View />
         </View>
 
         {/* Main Content */}
         <View className="flex-1 px-6 justify-center">
           {/* Hero Section */}
-          <View className="items-center mb-12">
-            <View className="bg-white p-8 rounded-full mb-8 shadow-2xl border-4 border-[#E3DCD6]">
-              <Feather name="clock" size={80} color="#7662C0" />
+          <View className="items-center mb-12 -mt-6">
+            <View className="mb-8">
+              <Image
+                source={require("../../assets/images/cauldron emoji-Photoroom.png")}
+                style={{ width: 320, height: 320, transform: [{ scale: 1.2 }] }}
+                resizeMode="contain"
+              />
             </View>
-            <Text className="text-5xl font-black text-center text-[#3A2F6E] mb-4 leading-tight">
-              Food <Text className="text-[#D9AC68]">Fresh.</Text>{'\n'}Waste <Text className="text-[#D9AC68]">Less.</Text>
+            <Text className="text-5xl font-black text-center text-[#3A2F6E] mb-4 leading-tight -mt-4">
+              Food <Text className="text-[#D9AC68]">Fresh</Text>{'\n'}Waste <Text className="text-[#D9AC68]">Less.</Text>
             </Text>
-            <Text className="text-lg text-center text-gray-600 mb-8 font-medium leading-relaxed px-4">
+            <Text className="text-lg text-center text-gray-600 mb-8 font-medium leading-relaxed px-4 -mt-2">
               Your smart pantry assistant to track expiration dates and save money.
             </Text>
           </View>
 
           {/* Action Buttons */}
-          <View className="space-y-5 gap-5">
+          <View className="space-y-5 gap-5 -mt-12">
             <Link href="/inventory" asChild>
               <TouchableOpacity className="bg-[#7662C0] p-5 rounded-2xl flex-row justify-center items-center shadow-lg shadow-[#3A2F6E]/40 active:scale-95 transition-transform duration-100 border-b-4 border-[#3A2F6E]">
                 <Feather name="box" size={28} color="white" className="mr-4" />
@@ -68,8 +70,8 @@ export default function Index() {
         </View>
 
         {/* Footer */}
-        <View className="items-center pb-8">
-          <Text className="text-xs text-gray-400 font-medium">v1.0.0 • Made for UGAHacks</Text>
+        <View className="items-center pb-8 relative">
+          <Text className="text-xs text-gray-400 font-medium absolute bottom-2">v1.0.0 • Made for UGAHacks</Text>
         </View>
       </SafeAreaView>
     </View>
