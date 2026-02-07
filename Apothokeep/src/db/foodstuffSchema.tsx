@@ -3,6 +3,7 @@ import mongoose from "mongoose";
 const { Schema } = mongoose;
 
 const foodstuffSchema = new Schema({
+    _id: { type: mongoose.Schema.Types.ObjectId, default: () => new mongoose.Types.ObjectId(), required: true },
     name: { type: String, required: true },
     opened: { type: Boolean, required: true, default: false}, // products are sold closed
     purchaseDate: {type: Date, default: Date.now(), required: true},
