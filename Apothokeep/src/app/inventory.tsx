@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useCallback, useState } from "react";
 import {
   ActionSheetIOS,
   Text,
@@ -16,7 +16,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { Feather } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
-import { useRouter } from "expo-router";
+import { useFocusEffect, useRouter } from "expo-router";
 
 // Define the type for an inventory item
 interface InventoryItem {
@@ -30,11 +30,48 @@ export default function InventoryScreen() {
   // Start with empty inventory
   const [items, setItems] = useState<InventoryItem[]>([]);
   const [result, setResult] = useState('test camera');
+  const API_BASE_URL =
+    process.env.EXPO_PUBLIC_API_URL ?? "http://localhost:3000";
 
   // State for Modal
   const [modalVisible, setModalVisible] = useState(false);
   const [newItemName, setNewItemName] = useState("");
   const [newItemExpiration, setNewItemExpiration] = useState("");
+
+  const formatExpirationDate = (value?: string) => {
+    if (!value) return "No Date";
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return value;
+    return date.toLocaleDateString();
+  };
+
+  const fetchInventory = useCallback(async () => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/foodstuff`);
+      if (!response.ok) {
+        const errorBody = await response.json().catch(() => null);
+        throw new Error(errorBody?.error || `Request failed (${response.status})`);
+      }
+      const data = await response.json();
+      const list = Array.isArray(data) ? data : data?.items ?? [];
+      const normalized = list
+        .filter((item: any) => item)
+        .map((item: any) => ({
+          id: item?._id?.toString() ?? item?.id?.toString() ?? Math.random().toString(),
+          name: item?.name ?? "Unnamed item",
+          expirationDate: formatExpirationDate(item?.expirationDate),
+        }));
+      setItems(normalized);
+    } catch (err: any) {
+      Alert.alert("Load failed", err?.message || "Could not fetch inventory.");
+    }
+  }, [API_BASE_URL]);
+
+  useFocusEffect(
+    useCallback(() => {
+      fetchInventory();
+    }, [fetchInventory])
+  );
 
   const handleActionSheet = () => {
     if (Platform.OS === 'ios') {
@@ -64,24 +101,70 @@ export default function InventoryScreen() {
   };
 
   // Function to add a new item
-  const handleAddItem = () => {
-    if (!newItemName.trim()) {
-      alert("Please enter an item name.");
+  const handleAddItem = async () => {
+    const trimmedName = newItemName.trim();
+    const trimmedExpiration = newItemExpiration.trim();
+
+    if (!trimmedName) {
+      Alert.alert("Missing name", "Please enter an item name.");
       return;
     }
 
-    const newItem: InventoryItem = {
-      id: Date.now().toString(),
-      name: newItemName,
-      expirationDate: newItemExpiration || "No Date",
-    };
+    let expirationDateForDb = new Date().toISOString();
+    if (trimmedExpiration) {
+      let parsedExpiration: Date;
+      // If user enters a date-only string, treat it as end-of-day local time
+      if (/^\d{4}-\d{2}-\d{2}$/.test(trimmedExpiration)) {
+        parsedExpiration = new Date(`${trimmedExpiration}T23:59:59.999`);
+      } else {
+        parsedExpiration = new Date(trimmedExpiration);
+      }
+      if (Number.isNaN(parsedExpiration.getTime())) {
+        Alert.alert(
+          "Invalid date",
+          "Please use a valid date (e.g. 2024-12-31)."
+        );
+        return;
+      }
+      expirationDateForDb = parsedExpiration.toISOString();
+    }
 
-    setItems([...items, newItem]);
+    try {
+      const response = await fetch(`${API_BASE_URL}/foodstuff`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: trimmedName,
+          opened: false,
+          purchaseDate: new Date().toISOString(),
+          expirationDate: expirationDateForDb,
+          location: 0,
+        }),
+      });
 
-    // Reset and close modal
-    setNewItemName("");
-    setNewItemExpiration("");
-    setModalVisible(false);
+      if (!response.ok) {
+        const errorBody = await response.json().catch(() => null);
+        throw new Error(errorBody?.error || `Request failed (${response.status})`);
+      }
+
+      const savedItem = await response.json();
+      const newItem: InventoryItem = {
+        id: savedItem?._id?.toString() ?? Date.now().toString(),
+        name: savedItem?.name ?? trimmedName,
+        expirationDate: formatExpirationDate(
+          savedItem?.expirationDate ?? trimmedExpiration
+        ),
+      };
+
+      setItems((prevItems) => [...prevItems, newItem]);
+
+      // Reset and close modal
+      setNewItemName("");
+      setNewItemExpiration("");
+      setModalVisible(false);
+    } catch (err: any) {
+      Alert.alert("Save failed", err?.message || "Could not save item.");
+    }
   };
 
   // Function to delete an item
@@ -116,7 +199,7 @@ export default function InventoryScreen() {
 
       {/* Background Gradient */}
       <LinearGradient
-        colors={['#166534', '#15803d', '#f0fdf4']}
+        colors={['#7662C0', '#D696CA', '#E3DCD6']}
         style={{ position: 'absolute', left: 0, right: 0, top: 0, height: '100%' }}
         start={{ x: 0, y: 0 }}
         end={{ x: 0, y: 0.3 }}
@@ -124,9 +207,20 @@ export default function InventoryScreen() {
 
       <SafeAreaView className="flex-1">
         {/* Header */}
+        {/* Header */}
         <View className="px-6 py-4 mb-2">
-          <Text className="text-3xl font-extrabold text-white tracking-wider shadow-sm">My Inventory</Text>
-          <Text className="text-green-100 text-xs font-medium tracking-widest uppercase">Manage Your Items</Text>
+          <View className="flex-row items-center mb-2">
+            <TouchableOpacity
+              onPress={() => router.push('/')}
+              className="mr-4 w-10 h-10 rounded-full bg-white/20 items-center justify-center active:bg-white/30"
+            >
+              <Feather name="chevron-left" size={24} color="white" />
+            </TouchableOpacity>
+            <View>
+              <Text className="text-3xl font-extrabold text-white tracking-wider shadow-sm">My Inventory</Text>
+              <Text className="text-green-100 text-xs font-medium tracking-widest uppercase">Manage Your Items</Text>
+            </View>
+          </View>
         </View>
 
         {/* List Content */}
@@ -140,7 +234,7 @@ export default function InventoryScreen() {
             ListEmptyComponent={
               <View className="items-center justify-center mt-20">
                 <View className="bg-white/80 p-6 rounded-full mb-4 shadow-sm">
-                  <Feather name="inbox" size={50} color="#166534" style={{ opacity: 0.5 }} />
+                  <Feather name="inbox" size={50} color="#7662C0" style={{ opacity: 0.5 }} />
                 </View>
                 <Text className="text-lg text-gray-600 font-medium">Your inventory is empty</Text>
                 <Text className="text-sm text-gray-400 mt-2">Add items to track their freshness</Text>
@@ -151,7 +245,7 @@ export default function InventoryScreen() {
 
         {/* Add Button */}
         <TouchableOpacity
-          className="absolute bottom-8 right-8 w-16 h-16 rounded-full bg-green-700 justify-center items-center shadow-lg shadow-green-900/40 active:scale-95 transition-transform border-4 border-white"
+          className="absolute bottom-8 right-8 w-16 h-16 rounded-full bg-[#D9AC68] justify-center items-center shadow-lg shadow-green-900/40 active:scale-95 transition-transform border-4 border-white"
           onPress={handleActionSheet}
         >
           <Feather name="plus" size={32} color="white" />

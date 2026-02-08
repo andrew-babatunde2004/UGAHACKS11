@@ -1,21 +1,23 @@
 import * as React from "react";
 import { useRef } from "react";
-import { Text, View, StyleSheet, Platform, StatusBar } from "react-native";
+import { Text, View, StyleSheet, Platform, StatusBar, TouchableOpacity } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Feather } from "@expo/vector-icons";
 import { cssInterop } from "react-native-css-interop";
+import { router } from "expo-router";
 
 // We wrap the camera logic to prevent top-level imports of react-native-vision-camera
 // which crashes on the web even if the component isn't rendered.
 const CameraView = () => {
   // Lazy load native modules
   const { Camera, useCameraDevice, useCameraPermission, useCodeScanner } = require("react-native-vision-camera");
-  
-  cssInterop(Camera, {className: "style"});
-  const camera = useRef(null);
-  const { hasPermission} = useCameraPermission();
-  const device = useCameraDevice("back");
 
+  cssInterop(Camera, { className: "style" });
+  const camera = useRef(null);
+  const { hasPermission } = useCameraPermission();
+  const device = useCameraDevice("back");
+  const lastScannedRef = useRef(null);
+  const [isActive, setIsActive] = React.useState(true);
   const takePicture = async () => {
     try {
       if (camera.current == null) throw new Error("Camera is Null");
@@ -27,12 +29,22 @@ const CameraView = () => {
 
   const codeScanner = useCodeScanner({
     codeTypes: ["qr", "ean-13"],
-    onCodeScanned: (codes ) => {
+    onCodeScanned: async (codes) => {
       for (const code of codes) {
-        console.log(`Scanned ${code.value} codes!`);
+        if (code.value === lastScannedRef.current) continue;
+
+        lastScannedRef.current = code.value;
+        const res = await fetch(
+          `https://world.openfoodfacts.org/api/v0/product/${code.value}.json?fields=brands,categories`
+        );
+        const data = await res.json();
+        console.log(data);
+        router.push("/inventory");
+        setIsActive(false);
       }
     },
   });
+
 
   if (device == null) return (
     <View style={styles.container}>
@@ -42,29 +54,37 @@ const CameraView = () => {
 
   return (
     <>
-      <SafeAreaView className="flex-1">
-      
-        <Camera
-          ref={camera}
-          codeScanner={codeScanner}
-          photo={true}
-          className="flex-1"
-          device={device}
-          isActive
-        />
-      
+      <Camera
+        ref={camera}
+        codeScanner={codeScanner}
+        photo={true}
+        style={StyleSheet.absoluteFill}
+        device={device}
+        isActive={isActive}
+      />
+
+      {/* Overlay Controls */}
+      <SafeAreaView className="absolute w-full h-full flex-col justify-between p-6" pointerEvents="box-none">
+        {/* Top Section: Cancel Button */}
+        <View className="flex-row justify-start pt-4">
+          <TouchableOpacity
+            onPress={() => router.back()}
+            className="w-10 h-10 rounded-full bg-black/40 items-center justify-center border border-white/20"
+          >
+            <Feather name="x" size={24} color="white" />
+          </TouchableOpacity>
+        </View>
+
+        {/* Bottom Section: Take Picture Button */}
+        <View className="items-center pb-8">
+          <TouchableOpacity
+            onPress={takePicture}
+            className="w-20 h-20 rounded-full border-4 border-white items-center justify-center"
+          >
+            <View className="w-16 h-16 rounded-full bg-white" />
+          </TouchableOpacity>
+        </View>
       </SafeAreaView>
-      
-      <View
-        style={{
-          flex: 1.1,
-          flexDirection: "row",
-          justifyContent: "space-evenly",
-          alignItems: "center",
-        }}
-      >
-        <Text>Bottom Section</Text>
-      </View>
     </>
   );
 };

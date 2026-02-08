@@ -1,6 +1,7 @@
 import { ImageBackground } from "react-native";
 import React, { useState, useEffect } from "react";
-import { View, Text, StyleSheet, FlatList, Dimensions, ScrollView } from "react-native";
+import { View, Text, StyleSheet, FlatList, Dimensions, ScrollView, TouchableOpacity } from "react-native";
+import { router } from "expo-router";
 import { Feather } from "@expo/vector-icons";
 import { SafeAreaView } from "react-native-safe-area-context";
 
@@ -219,7 +220,12 @@ export default function Tracker() {
       <SafeAreaView style={styles.safeArea}>
         <View style={styles.container}>
 
-          <Text style={styles.headerTitle}>Freshness Tracker</Text>
+          <View style={styles.headerRow}>
+            <TouchableOpacity onPress={() => router.push('/')} style={styles.backButton}>
+              <Feather name="chevron-left" size={24} color="#1F2937" />
+            </TouchableOpacity>
+            <Text style={styles.headerTitleText}>Freshness Tracker</Text>
+          </View>
 
           <View style={styles.chartSection}>
             <PieChart counts={counts} />
@@ -250,12 +256,24 @@ const styles = StyleSheet.create({
     flex: 1,
     padding: 20,
   },
-  headerTitle: {
+  headerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 20,
+  },
+  backButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: 'rgba(255,255,255,0.5)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 12,
+  },
+  headerTitleText: {
     fontSize: 28,
     fontWeight: "800",
     color: "#1F2937",
-    marginBottom: 20,
-    textAlign: "center",
   },
   chartSection: {
     backgroundColor: "#b2a3e5a1",
