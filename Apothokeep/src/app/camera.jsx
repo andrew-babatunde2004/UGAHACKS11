@@ -6,6 +6,9 @@ import { Feather } from "@expo/vector-icons";
 import { cssInterop } from "react-native-css-interop";
 import { router } from "expo-router";
 
+// websocket url for backend commuication (doBS)
+const WS_URL = "ws://192.168.1.42:8080/scan"; // change to laptop IP
+
 // We wrap the camera logic to prevent top-level imports of react-native-vision-camera
 // which crashes on the web even if the component isn't rendered.
 const CameraView = () => {
@@ -18,10 +21,29 @@ const CameraView = () => {
   const device = useCameraDevice("back");
   const lastScannedRef = useRef(null);
   const [isActive, setIsActive] = React.useState(true);
+
+  // websocket ref
+  const wsRef = useRef<WebSocket | null>(null);
+
+    React.useEffect(() => {
+    const ws = new WebSocket(WS_URL);
+    wsRef.current = ws;
+
+    ws.onopen = () => console.log("WS open");
+    ws.onmessage = (e) => console.log("WS message:", e.data);
+    ws.onerror = (e) => console.log("WS error:", e?.message ?? e);
+    ws.onclose = (e) => console.log("WS closed:", e.code, e.reason);
+
+    return () => {
+      ws.close();
+      wsRef.current = null;
+    };
+  }, []);
+ // end web socket setup
+
   const takePicture = async () => {
     try {
       if (camera.current == null) throw new Error("Camera is Null");
-      // take photo logic here
     } catch (e) {
       console.log(e);
     }
@@ -37,7 +59,17 @@ const CameraView = () => {
         const res = await fetch(
           `https://world.openfoodfacts.org/api/v0/product/${code.value}.json?fields=brands,categories`
         );
+
         const data = await res.json();
+
+        // send data to backend via websocket 
+        const ws = wsRef.current;
+        if (ws && ws.readyState === WebSocket.OPEN) {
+          ws.send(JSON.stringify({ type: "SCAN", payload: data }));
+        } else {
+          console.log("WS not open; readyState =", ws?.readyState);
+        }
+
         console.log(data);
         router.push("/inventory");
         setIsActive(false);
