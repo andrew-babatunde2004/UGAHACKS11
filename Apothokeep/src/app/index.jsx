@@ -38,8 +38,8 @@ export default function Index() {
           <View className="items-center mb-12 -mt-6">
             <View className="mb-8">
               <Image
-                source={require("../../assets/images/cauldron emoji-Photoroom.png")}
-                style={{ width: 320, height: 320, transform: [{ scale: 1.2 }] }}
+                source={require("../../assets/images/cauldron-emoji.png")}
+                style={{ width: 320, height: 320, transform: [{ scale: 1.44 }] }}
                 resizeMode="contain"
               />
             </View>
