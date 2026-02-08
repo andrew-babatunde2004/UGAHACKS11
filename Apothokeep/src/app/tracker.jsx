@@ -10,9 +10,6 @@ const API = "http://localhost:3000/foodstuff";
 
 
 
-
-
-
 // Freshness Constants
 const SEVEN_DAYS = 7 * 24 * 60 * 60 * 1000;
 
@@ -205,12 +202,16 @@ export default function Tracker() {
 
 
   useEffect(() => {
+    console.log("ITEMS:", items);
+    console.log("FIRST DATE:", items[0]?.expirationDate);
+
+
     let exp = 0;
     let soon = 0;
     let fresh = 0;
 
     items.forEach(item => {
-      const { status } = getFreshness(item.expirationDate);
+      const { status } = <Text>{status} • {item.expirationDate}</Text>
       if (status === "Expired") exp++;
       else if (status === "Expiring Soon") soon++;
       else fresh++;
@@ -220,7 +221,8 @@ export default function Tracker() {
   }, [items]);
 
   const renderItem = ({ item }) => {
-    const { status, color } = getFreshness(item.expirationDate);
+    const { status, color } = getFreshness(item.expiryDate);
+
 
     return (
       <View style={[styles.itemBlock, { backgroundColor: color + "20", borderColor: color }]}>
