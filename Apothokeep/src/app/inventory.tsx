@@ -22,6 +22,7 @@ import { useFocusEffect, useRouter } from "expo-router";
 interface InventoryItem {
   id: string;
   name: string;
+  purchaseDate: string;
   expirationDate: string;
 }
 
@@ -37,6 +38,11 @@ export default function InventoryScreen() {
   const [modalVisible, setModalVisible] = useState(false);
   const [newItemName, setNewItemName] = useState("");
   const [newItemExpiration, setNewItemExpiration] = useState("");
+  const [editModalVisible, setEditModalVisible] = useState(false);
+  const [editItemId, setEditItemId] = useState<string | null>(null);
+  const [editItemName, setEditItemName] = useState("");
+  const [editPurchaseDate, setEditPurchaseDate] = useState("");
+  const [editExpirationDate, setEditExpirationDate] = useState("");
 
   const formatExpirationDate = (value?: string) => {
     if (!value) return "No Date";
@@ -81,6 +87,14 @@ export default function InventoryScreen() {
     return result;
   };
 
+  const openEditModal = (item: InventoryItem) => {
+    setEditItemId(item.id);
+    setEditItemName(item.name);
+    setEditPurchaseDate(item.purchaseDate);
+    setEditExpirationDate(item.expirationDate);
+    setEditModalVisible(true);
+  };
+
   const fetchInventory = useCallback(async () => {
     try {
       const response = await fetch(`${API_BASE_URL}/foodstuff`);
@@ -95,6 +109,7 @@ export default function InventoryScreen() {
         .map((item: any) => ({
           id: item?._id?.toString() ?? item?.id?.toString() ?? Math.random().toString(),
           name: item?.name ?? "Unnamed item",
+          purchaseDate: formatExpirationDate(item?.purchaseDate),
           expirationDate: formatExpirationDate(item?.expirationDate),
         }));
       setItems(normalized);
@@ -148,23 +163,8 @@ export default function InventoryScreen() {
 
     let expirationDateForDb = toLocalISOString(new Date());
     if (trimmedExpiration) {
-      let parsedExpiration: Date;
-      const relativeExpiration = parseRelativeExpiration(trimmedExpiration);
-      if (relativeExpiration) {
-        parsedExpiration = relativeExpiration;
-      } else if (/^\d{4}-\d{2}-\d{2}$/.test(trimmedExpiration)) {
-        // If user enters a date-only string, treat it as end-of-day local time
-        parsedExpiration = new Date(`${trimmedExpiration}T23:59:59.999`);
-      } else {
-        parsedExpiration = new Date(trimmedExpiration);
-      }
-      if (Number.isNaN(parsedExpiration.getTime())) {
-        Alert.alert(
-          "Invalid date",
-          "Use a date (e.g. 2024-12-31) or a duration like 1 week, 4 days."
-        );
-        return;
-      }
+      const parsedExpiration = parseDateInput(trimmedExpiration, "expiration");
+      if (!parsedExpiration) return;
       expirationDateForDb = toLocalISOString(parsedExpiration);
     }
 
@@ -190,6 +190,9 @@ export default function InventoryScreen() {
       const newItem: InventoryItem = {
         id: savedItem?._id?.toString() ?? Date.now().toString(),
         name: savedItem?.name ?? trimmedName,
+        purchaseDate: formatExpirationDate(
+          savedItem?.purchaseDate ?? new Date().toISOString()
+        ),
         expirationDate: formatExpirationDate(
           savedItem?.expirationDate ?? trimmedExpiration
         ),
@@ -203,6 +206,100 @@ export default function InventoryScreen() {
       setModalVisible(false);
     } catch (err: any) {
       Alert.alert("Save failed", err?.message || "Could not save item.");
+    }
+  };
+
+  const parseDateInput = (raw: string, fieldLabel: string) => {
+    const trimmed = raw.trim();
+    if (!trimmed) return null;
+    let parsed: Date;
+    const relativeExpiration = parseRelativeExpiration(trimmed);
+    if (relativeExpiration) {
+      parsed = relativeExpiration;
+    } else if (/^\d{4}-\d{2}-\d{2}$/.test(trimmed)) {
+      parsed = new Date(`${trimmed}T23:59:59.999`);
+    } else if (/^\d{1,2}\/\d{1,2}\/\d{2,4}$/.test(trimmed)) {
+      const [mm, dd, yearRaw] = trimmed.split("/");
+      const mmNum = Number(mm);
+      const ddNum = Number(dd);
+      let yyyy = Number(yearRaw);
+      if (yearRaw.length === 2) {
+        // Interpret 00-69 as 2000-2069, 70-99 as 1970-1999
+        yyyy = yyyy + (yyyy <= 69 ? 2000 : 1900);
+      }
+      parsed = new Date(yyyy, mmNum - 1, ddNum, 23, 59, 59, 999);
+    } else {
+      parsed = new Date(trimmed);
+    }
+    if (Number.isNaN(parsed.getTime())) {
+      Alert.alert(
+        "Invalid date",
+        `Please use a valid ${fieldLabel} date (e.g. 2024-12-31, 12/31/2024, or 12/31/24) or a duration like 1 week.`
+      );
+      return null;
+    }
+    return parsed;
+  };
+
+  const handleUpdateItem = async () => {
+    if (!editItemId) return;
+    const trimmedName = editItemName.trim();
+    if (!trimmedName) {
+      Alert.alert("Missing name", "Please enter an item name.");
+      return;
+    }
+
+    const parsedPurchase = parseDateInput(editPurchaseDate, "purchase");
+    if (editPurchaseDate.trim() && !parsedPurchase) return;
+    const parsedExpiration = parseDateInput(editExpirationDate, "expiration");
+    if (editExpirationDate.trim() && !parsedExpiration) return;
+
+    const payload: Record<string, any> = {
+      name: trimmedName,
+    };
+    if (parsedPurchase) payload.purchaseDate = toLocalISOString(parsedPurchase);
+    if (parsedExpiration) payload.expirationDate = toLocalISOString(parsedExpiration);
+
+    try {
+      const response = await fetch(`${API_BASE_URL}/foodstuff/${editItemId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+
+      if (!response.ok) {
+        const errorBody = await response.json().catch(() => null);
+        throw new Error(errorBody?.error || `Request failed (${response.status})`);
+      }
+
+      const savedItem = await response.json().catch(() => null);
+
+      setItems((prev) =>
+        prev.map((item) =>
+          item.id === editItemId
+            ? {
+                ...item,
+                name: savedItem?.name ?? trimmedName,
+                purchaseDate: formatExpirationDate(
+                  savedItem?.purchaseDate ??
+                    (parsedPurchase ? parsedPurchase.toISOString() : item.purchaseDate)
+                ),
+                expirationDate: formatExpirationDate(
+                  savedItem?.expirationDate ??
+                    (parsedExpiration ? parsedExpiration.toISOString() : item.expirationDate)
+                ),
+              }
+            : item
+        )
+      );
+
+      setEditModalVisible(false);
+      setEditItemId(null);
+      setEditItemName("");
+      setEditPurchaseDate("");
+      setEditExpirationDate("");
+    } catch (err: any) {
+      Alert.alert("Update failed", err?.message || "Could not update item.");
     }
   };
 
@@ -226,14 +323,22 @@ export default function InventoryScreen() {
 
   // Render individual item
   const renderItem = ({ item }: { item: InventoryItem }) => (
-    <View className="flex-row bg-white p-4 rounded-xl mb-3 items-center shadow-sm border border-green-50">
+    <TouchableOpacity
+      onPress={() => openEditModal(item)}
+      className="flex-row bg-white p-4 rounded-xl mb-3 items-center shadow-sm border border-green-50 active:opacity-80"
+    >
       <View className="w-12 h-12 rounded-full bg-green-50 justify-center items-center mr-4 border border-green-100">
         <Feather name="box" size={20} color="#166534" />
       </View>
       <View className="flex-1">
         <Text className="text-lg font-bold text-gray-800">{item.name}</Text>
         <Text className="text-sm text-gray-500 mt-1">
-          Expires: <Text className="text-green-700 font-medium">{item.expirationDate}</Text>
+          Purchased:{" "}
+          <Text className="text-green-700 font-medium">{item.purchaseDate}</Text>
+        </Text>
+        <Text className="text-sm text-gray-500 mt-1">
+          Expires:{" "}
+          <Text className="text-green-700 font-medium">{item.expirationDate}</Text>
         </Text>
       </View>
       <TouchableOpacity
@@ -242,7 +347,7 @@ export default function InventoryScreen() {
       >
         <Feather name="trash-2" size={20} color="#dc2626" />
       </TouchableOpacity>
-    </View>
+    </TouchableOpacity>
   );
 
   return (
@@ -335,7 +440,7 @@ export default function InventoryScreen() {
                   <Text className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2 ml-1">Expiration Date</Text>
                   <TextInput
                     className="w-full h-12 border border-gray-200 rounded-xl px-4 bg-gray-50 text-gray-800"
-                    placeholder="e.g., 2024-12-31 or 1 week"
+                    placeholder="e.g., 12/31/2026 or 1 week"
                     placeholderTextColor="#9ca3af"
                     value={newItemExpiration}
                     onChangeText={setNewItemExpiration}
@@ -353,10 +458,80 @@ export default function InventoryScreen() {
 
                 {/* replace handleAddItem with onPress figure out why it wont work ahaahahah*/}
                 <TouchableOpacity
-                  className="flex-1 h-12 justify-center items-center rounded-xl bg-green-700 active:bg-green-800 shadow-lg shadow-green-700/30"
+                  className="flex-1 h-12 justify-center items-center rounded-xl bg-[#D9AC68] active:bg-[#C9974F] shadow-lg shadow-[#D9AC68]/30"
                   onPress={handleAddItem}
                 >
                   <Text className="text-white font-bold text-base">Save Item</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </View>
+        </Modal>
+
+        {/* Edit Item Modal */}
+        <Modal
+          animationType="fade"
+          transparent={true}
+          visible={editModalVisible}
+          onRequestClose={() => setEditModalVisible(false)}
+        >
+          <View className="flex-1 bg-black/60 justify-center items-center px-6">
+            <View className="w-full bg-white rounded-3xl p-6 shadow-2xl">
+              <View className="flex-row justify-between items-center mb-6">
+                <Text className="text-2xl font-bold text-gray-800">Edit Item</Text>
+                <TouchableOpacity onPress={() => setEditModalVisible(false)}>
+                  <Feather name="x" size={24} color="#9ca3af" />
+                </TouchableOpacity>
+              </View>
+
+              <View className="space-y-4 mb-6">
+                <View>
+                  <Text className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2 ml-1">Item Name</Text>
+                  <TextInput
+                    className="w-full h-12 border border-gray-200 rounded-xl px-4 bg-gray-50 text-gray-800"
+                    placeholder="e.g., Milk, Eggs, Bread"
+                    placeholderTextColor="#9ca3af"
+                    value={editItemName}
+                    onChangeText={setEditItemName}
+                  />
+                </View>
+
+                <View>
+                  <Text className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2 ml-1">Purchase Date</Text>
+                  <TextInput
+                    className="w-full h-12 border border-gray-200 rounded-xl px-4 bg-gray-50 text-gray-800"
+                    placeholder="e.g., 12/31/2026 or 1 week"
+                    placeholderTextColor="#9ca3af"
+                    value={editPurchaseDate}
+                    onChangeText={setEditPurchaseDate}
+                  />
+                </View>
+
+                <View>
+                  <Text className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2 ml-1">Expiration Date</Text>
+                  <TextInput
+                    className="w-full h-12 border border-gray-200 rounded-xl px-4 bg-gray-50 text-gray-800"
+                    placeholder="e.g., 12/31/2026 or 1 week"
+                    placeholderTextColor="#9ca3af"
+                    value={editExpirationDate}
+                    onChangeText={setEditExpirationDate}
+                  />
+                </View>
+              </View>
+
+              <View className="flex-row gap-4">
+                <TouchableOpacity
+                  className="flex-1 h-12 justify-center items-center rounded-xl bg-gray-100 active:bg-gray-200"
+                  onPress={() => setEditModalVisible(false)}
+                >
+                  <Text className="text-gray-600 font-bold text-base">Cancel</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  className="flex-1 h-12 justify-center items-center rounded-xl bg-[#D9AC68] active:bg-[#C9974F] shadow-lg shadow-[#D9AC68]/30"
+                  onPress={handleUpdateItem}
+                >
+                  <Text className="text-white font-bold text-base">Save Changes</Text>
                 </TouchableOpacity>
               </View>
             </View>
