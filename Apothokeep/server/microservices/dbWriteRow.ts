@@ -39,6 +39,6 @@ export async function writeRowDirect(
   if (!mongoose.connection.db) {
     throw new Error("MongoDB connection is not initialized");
   }
-  
+
   return mongoose.connection.db.collection(collectionName);
 }
