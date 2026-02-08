@@ -1,8 +1,8 @@
 # UGAHACKS11
 # Team Members
-Andvrew Babatunde
-Uygar Safyurek
-Lee Mcelhenney
+Andvrew Babatunde,
+Uygar Safyurek,
+Lee Mcelhenney,
 Jonathan Anderson
 
 ## What it does:
