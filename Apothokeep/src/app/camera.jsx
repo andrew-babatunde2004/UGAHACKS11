@@ -7,7 +7,7 @@ import { cssInterop } from "react-native-css-interop";
 import { router } from "expo-router";
 
 // websocket url for backend commuication (doBS)
-const WS_URL = "ws://172.21.80.128:8080"; // change to laptop IP
+const WS_URL = "ws://172.20.108.250:8080"; // change to laptop IP
 
 // We wrap the camera logic to prevent top-level imports of react-native-vision-camera
 // which crashes on the web even if the component isn't rendered.
@@ -20,12 +20,17 @@ const CameraView = () => {
   const { hasPermission } = useCameraPermission();
   const device = useCameraDevice("back");
   const lastScannedRef = useRef(null);
+  const inFlightRef = useRef(false);
   const [isActive, setIsActive] = React.useState(true);
 
   // websocket ref
   const wsRef = useRef(null);
 
   React.useEffect(() => {
+    if (!WS_URL || typeof WS_URL !== "string") {
+      console.log("WS_URL missing or invalid");
+      return;
+    }
     const ws = new WebSocket(WS_URL);
     wsRef.current = ws;
 
@@ -52,9 +57,11 @@ const CameraView = () => {
   const codeScanner = useCodeScanner({
     codeTypes: ["qr", "ean-13"],
     onCodeScanned: async (codes) => {
+      if (inFlightRef.current) return;
       for (const code of codes) {
         if (code.value === lastScannedRef.current) continue;
 
+        inFlightRef.current = true;
         lastScannedRef.current = code.value;
         // send barcode to backend via websocket
         const ws = wsRef.current;
@@ -68,16 +75,26 @@ const CameraView = () => {
             }
             setIsActive(false);
             router.push("/inventory");
+            inFlightRef.current = false;
           }, 500);
         } else {
           console.log("WS not open; readyState =", ws?.readyState);
           setIsActive(false);
           router.push("/inventory");
+          inFlightRef.current = false;
         }
       }
     },
   });
 
+
+  if (!hasPermission) {
+    return (
+      <View style={styles.container}>
+        <Text>Camera permission not granted</Text>
+      </View>
+    );
+  }
 
   if (device == null) return (
     <View style={styles.container}>
@@ -136,6 +153,6 @@ export default function Index() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    paddingTop: Platform.OS == "ios" ? StatusBar.currentHeight : 0,
+    paddingTop: Platform.OS === "ios" ? 0 : (StatusBar.currentHeight ?? 0),
   },
 });

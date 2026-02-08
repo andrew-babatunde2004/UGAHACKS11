@@ -29,7 +29,7 @@ function stripNullish(obj: Record<string, any>): Record<string, any> {
  */
 export async function writeRowDirect(
   rawRow: KVRow,
-  collectionName = "foodstuffs",
+  collectionName = "foodstuffs"
 ) {
   await connectMongoDB();
 
@@ -40,5 +40,11 @@ export async function writeRowDirect(
     throw new Error("MongoDB connection is not initialized");
   }
 
-  return mongoose.connection.db.collection(collectionName);
+  const collection = mongoose.connection.db.collection(collectionName);
+  const insertResult = await collection.insertOne(flattened);
+
+  return {
+    insertedId: insertResult.insertedId,
+    document: flattened
+  };
 }
