@@ -1,8 +1,11 @@
+import dotenv from "dotenv";
 import http from "http";
 import WebSocket, { WebSocketServer } from "ws";
 import { createLogger } from "../utils/logger";
 import { chooseFoodstuffFromBarcode } from "./deduceFoodBarcode";
 import { writeRowDirect } from "./dbWriteRow";
+
+dotenv.config();
 
 const logger = createLogger("BarcodeService");
 
@@ -28,7 +31,7 @@ interface BarcodeScanMessage {
 }
 
 // WebSocket connection handler
-wss.on("connection", (ws, req) => {
+wss.on("connection", (ws: WebSocket, req: http.IncomingMessage) => {
   logger.info("New client connected", { ip: req.socket.remoteAddress });
 
   if (ws.readyState === WebSocket.OPEN) {
@@ -41,7 +44,7 @@ wss.on("connection", (ws, req) => {
   }
 
   // Listen for incoming messages
-  ws.on("message", async (data) => {
+  ws.on("message", async (data: WebSocket.RawData) => {
     let message: BarcodeScanMessage;
     try {
       message = JSON.parse(data.toString());
@@ -126,21 +129,27 @@ wss.on("connection", (ws, req) => {
         return;
       }
 
-      // Write to database
-      const result = await writeRowDirect(row);
-      logger.info("Inserted new foodstuff", { insertedId: result.insertedId });
+      // Write to database with location, opened status, and purchase date
+      const result = await writeRowDirect(row, location, opened, purchaseDate);
+      logger.info("Inserted new foodstuff", {
+        insertedId: result.insertedId,
+        expirationDate: result.document.expirationDate,
+        location,
+        opened
+      });
 
       // Send success response with inserted document
       if (ws.readyState === WebSocket.OPEN) {
+        const doc = result.document as any;
         ws.send(
           JSON.stringify({
             type: "barcode_result",
             status: "ok",
             foodstuffId: result.insertedId.toString(),
-            name: result.document.Name || "Unknown",
-            expirationDate: result.document.expirationDate,
-            location: result.document.location || location,
-            opened: result.document.opened || opened,
+            name: doc.Name || "Unknown",
+            expirationDate: doc.expirationDate,
+            location: doc.location,
+            opened: doc.opened,
           })
         );
       }
@@ -165,7 +174,7 @@ wss.on("connection", (ws, req) => {
     logger.info("Client disconnected");
   });
 
-  ws.on("error", (err) => {
+  ws.on("error", (err: Error) => {
     logger.error("WebSocket error", { error: err.message });
   });
 });

@@ -1,17 +1,26 @@
-import { GoogleGenerativeAI } from "@google/generative-ai";
+// @ts-ignore
+import { GoogleGenAI } from "@google/genai";
+import dotenv from "dotenv";
 import { createLogger } from "../utils/logger";
-import categoryJson from "../datasets/categories.json";
-import foodstuffJson from "../datasets/foodstuffByCategory.json";
+import categoryJsonRaw from "../datasets/categories.json";
+import foodstuffJsonRaw from "../datasets/foodstuffByCategory.json";
+
+// Load environment variables
+dotenv.config();
+
+const categoryJson = categoryJsonRaw as any;
+const foodstuffJson = foodstuffJsonRaw as any;
 
 const logger = createLogger("FoodDeduction");
 
 const apiKey = process.env.GEMINI_API_KEY;
+
 if (!apiKey) {
   throw new Error("GEMINI_API_KEY is not set");
 }
 
-const genAI = new GoogleGenerativeAI(apiKey);
-const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash-exp" });
+const genAI = new GoogleGenAI({ apiKey });
+const MODEL_NAME = "gemini-2.0-flash"; 
 
 const elementsPerCategory = [
   7, 23, 52, 7, 34, 52, 46, 25, 30, 49, 6, 31, 2, 6, 16, 2, 33, 68, 68, 6,
@@ -32,10 +41,10 @@ export async function chooseFoodstuffFromBarcode(
 ): Promise<KVRow | null> {
   try {
     const categoryListString = categoryJson.data
-      .map((row) => {
-        const idObj = row.find((obj: any) => obj.ID !== undefined);
-        const nameObj = row.find((obj: any) => obj.Category_Name !== undefined);
-        return `ID ${idObj.ID}: ${nameObj.Category_Name}`;
+      .map((row: KVRow) => {
+        const idObj = row.find((obj) => obj.ID !== undefined);
+        const nameObj = row.find((obj) => obj.Category_Name !== undefined);
+        return `ID ${idObj?.ID}: ${nameObj?.Category_Name}`;
       })
       .join(", ");
 
@@ -48,16 +57,16 @@ export async function chooseFoodstuffFromBarcode(
 pick the most likely corresponding Category ID. Return ONLY the number.`;
 
     // Use correct Gemini API
-    const categoryResult = await model.generateContent({
-      contents: [{ role: "user", parts: [{ text: categoryPrompt }] }],
-      generationConfig: {
+    const categoryResult = await genAI.models.generateContent({
+      model: MODEL_NAME,
+      contents: categoryPrompt,
+      config: {
         temperature: 0.1,
         maxOutputTokens: 10,
       },
     });
 
-    const categoryResponse = await categoryResult.response;
-    const categoryId = categoryResponse.text().trim();
+    const categoryId = (categoryResult.text || "").trim();
     logger.info("Gemini chose Category ID:", categoryId);
 
     const catIdInt = parseInt(categoryId);
@@ -78,11 +87,11 @@ pick the most likely corresponding Category ID. Return ONLY the number.`;
     );
 
     const productListString = filteredRows
-      .map((row: any) => {
-        const idObj = row.find((obj: any) => obj.ID !== undefined);
-        const nameObj = row.find((obj: any) => obj.Name !== undefined);
-        const subObj = row.find((obj: any) => obj.Name_subtitle !== undefined);
-        return `ID ${idObj.ID}: ${nameObj.Name}${
+      .map((row: KVRow) => {
+        const idObj = row.find((obj) => obj.ID !== undefined);
+        const nameObj = row.find((obj) => obj.Name !== undefined);
+        const subObj = row.find((obj) => obj.Name_subtitle !== undefined);
+        return `ID ${idObj?.ID}: ${nameObj?.Name}${
           subObj?.Name_subtitle ? " (" + subObj.Name_subtitle + ")" : ""
         }`;
       })
@@ -90,20 +99,20 @@ pick the most likely corresponding Category ID. Return ONLY the number.`;
 
     const productPrompt = `Find the specific Product ID for '${productName}' from this list: ${productListString}. Return ONLY the numeric Product ID. No text.`;
 
-    const productResult = await model.generateContent({
-      contents: [{ role: "user", parts: [{ text: productPrompt }] }],
-      generationConfig: {
+    const productResult = await genAI.models.generateContent({
+      model: MODEL_NAME,
+      contents: productPrompt,
+      config: {
         temperature: 0.1,
         maxOutputTokens: 10,
       },
     });
 
-    const productResponse = await productResult.response;
-    const finalProductId = productResponse.text().trim();
+    const finalProductId = (productResult.text || "").trim();
     logger.info("Final Product ID:", finalProductId);
 
-    const matchedRow = filteredRows.find((row: any) =>
-      row.some((obj: any) => obj.ID == finalProductId)
+    const matchedRow = filteredRows.find((row: KVRow) =>
+      row.some((obj) => obj.ID == finalProductId)
     );
 
     if (!matchedRow) {
