@@ -272,6 +272,7 @@ export default function Tracker() {
           <Text style={styles.itemName}>{item.name}</Text>
           <Text style={[styles.itemDate, { color: color }]}>{status} • {item.expirationDate}</Text>
           <Text style={styles.itemLocation}>Location: {locationLabel(item.location)}</Text>
+          <Text style={styles.itemOpened}>Opened: {item.opened ? "Yes" : "No"}</Text>
         </View>
       </View>
     );
@@ -457,6 +458,12 @@ const styles = StyleSheet.create({
   }
   ,
   itemLocation: {
+    fontSize: 12,
+    fontWeight: "500",
+    marginTop: 2,
+    color: "#374151",
+  },
+  itemOpened: {
     fontSize: 12,
     fontWeight: "500",
     marginTop: 2,

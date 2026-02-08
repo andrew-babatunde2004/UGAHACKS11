@@ -23,8 +23,11 @@ interface InventoryItem {
   id: string;
   name: string;
   purchaseDate: string;
+  purchaseDateRaw: string;
   expirationDate: string;
+  expirationDateRaw: string;
   location: 0 | 1 | 2;
+  opened: boolean;
 }
 
 export default function InventoryScreen() {
@@ -40,12 +43,15 @@ export default function InventoryScreen() {
   const [newItemName, setNewItemName] = useState("");
   const [newItemExpiration, setNewItemExpiration] = useState("");
   const [newItemLocation, setNewItemLocation] = useState<0 | 1 | 2>(0);
+  const [newItemOpened, setNewItemOpened] = useState(false);
   const [editModalVisible, setEditModalVisible] = useState(false);
   const [editItemId, setEditItemId] = useState<string | null>(null);
   const [editItemName, setEditItemName] = useState("");
   const [editPurchaseDate, setEditPurchaseDate] = useState("");
   const [editExpirationDate, setEditExpirationDate] = useState("");
   const [editItemLocation, setEditItemLocation] = useState<0 | 1 | 2>(0);
+  const [editItemOpened, setEditItemOpened] = useState(false);
+  const [purchaseSortDir, setPurchaseSortDir] = useState<"asc" | "desc">("asc");
 
   const locationLabel = (location: 0 | 1 | 2) => {
     if (location === 1) return "Refrigerator";
@@ -58,6 +64,21 @@ export default function InventoryScreen() {
     const date = new Date(value);
     if (Number.isNaN(date.getTime())) return value;
     return date.toLocaleDateString();
+  };
+
+  const parseDisplayDate = (value?: string) => {
+    if (!value) return null;
+    if (value === "No Date") return null;
+    const parsed = new Date(value);
+    if (Number.isNaN(parsed.getTime())) return null;
+    return parsed;
+  };
+
+  const parseRawDate = (value?: string) => {
+    if (!value) return null;
+    const parsed = new Date(value);
+    if (Number.isNaN(parsed.getTime())) return null;
+    return parsed;
   };
 
   const toLocalISOString = (date: Date) => {
@@ -102,6 +123,7 @@ export default function InventoryScreen() {
     setEditPurchaseDate(item.purchaseDate);
     setEditExpirationDate(item.expirationDate);
     setEditItemLocation(item.location);
+    setEditItemOpened(item.opened);
     setEditModalVisible(true);
   };
 
@@ -120,8 +142,11 @@ export default function InventoryScreen() {
           id: item?._id?.toString() ?? item?.id?.toString() ?? Math.random().toString(),
           name: item?.name ?? "Unnamed item",
           purchaseDate: formatExpirationDate(item?.purchaseDate),
+          purchaseDateRaw: item?.purchaseDate ?? "",
           expirationDate: formatExpirationDate(item?.expirationDate),
+          expirationDateRaw: item?.expirationDate ?? "",
           location: (item?.location ?? 0) as 0 | 1 | 2,
+          opened: Boolean(item?.opened),
         }));
       setItems(normalized);
     } catch (err: any) {
@@ -162,6 +187,20 @@ export default function InventoryScreen() {
     }
   };
 
+  const togglePurchaseSort = () => {
+    setPurchaseSortDir((prev) => (prev === "asc" ? "desc" : "asc"));
+  };
+
+  const sortedItems = [...items].sort((a, b) => {
+    const aDate = parseRawDate(a.purchaseDateRaw) ?? parseDisplayDate(a.purchaseDate);
+    const bDate = parseRawDate(b.purchaseDateRaw) ?? parseDisplayDate(b.purchaseDate);
+    if (!aDate && !bDate) return 0;
+    if (!aDate) return 1;
+    if (!bDate) return -1;
+    const diff = aDate.getTime() - bDate.getTime();
+    return purchaseSortDir === "asc" ? diff : -diff;
+  });
+
   // Function to add a new item
   const handleAddItem = async () => {
     const trimmedName = newItemName.trim();
@@ -185,7 +224,7 @@ export default function InventoryScreen() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           name: trimmedName,
-          opened: false,
+          opened: newItemOpened,
           purchaseDate: toLocalISOString(new Date()),
           expirationDate: expirationDateForDb,
           location: newItemLocation,
@@ -204,9 +243,13 @@ export default function InventoryScreen() {
         purchaseDate: formatExpirationDate(
           savedItem?.purchaseDate ?? new Date().toISOString()
         ),
+        purchaseDateRaw: savedItem?.purchaseDate ?? new Date().toISOString(),
         expirationDate: formatExpirationDate(
           savedItem?.expirationDate ?? trimmedExpiration
         ),
+        expirationDateRaw: savedItem?.expirationDate ?? trimmedExpiration,
+        location: (savedItem?.location ?? newItemLocation) as 0 | 1 | 2,
+        opened: Boolean(savedItem?.opened ?? newItemOpened),
       };
 
       setItems((prevItems) => [...prevItems, newItem]);
@@ -215,6 +258,7 @@ export default function InventoryScreen() {
       setNewItemName("");
       setNewItemExpiration("");
       setNewItemLocation(0);
+      setNewItemOpened(false);
       setModalVisible(false);
     } catch (err: any) {
       Alert.alert("Save failed", err?.message || "Could not save item.");
@@ -269,6 +313,7 @@ export default function InventoryScreen() {
     const payload: Record<string, any> = {
       name: trimmedName,
       location: editItemLocation,
+      opened: editItemOpened,
     };
     if (parsedPurchase) payload.purchaseDate = toLocalISOString(parsedPurchase);
     if (parsedExpiration) payload.expirationDate = toLocalISOString(parsedExpiration);
@@ -297,11 +342,18 @@ export default function InventoryScreen() {
                   savedItem?.purchaseDate ??
                     (parsedPurchase ? parsedPurchase.toISOString() : item.purchaseDate)
                 ),
+                purchaseDateRaw:
+                  savedItem?.purchaseDate ??
+                  (parsedPurchase ? parsedPurchase.toISOString() : item.purchaseDateRaw),
                 expirationDate: formatExpirationDate(
                   savedItem?.expirationDate ??
                     (parsedExpiration ? parsedExpiration.toISOString() : item.expirationDate)
                 ),
+                expirationDateRaw:
+                  savedItem?.expirationDate ??
+                  (parsedExpiration ? parsedExpiration.toISOString() : item.expirationDateRaw),
                 location: (savedItem?.location ?? editItemLocation) as 0 | 1 | 2,
+                opened: Boolean(savedItem?.opened ?? editItemOpened),
               }
             : item
         )
@@ -313,6 +365,7 @@ export default function InventoryScreen() {
       setEditPurchaseDate("");
       setEditExpirationDate("");
       setEditItemLocation(0);
+      setEditItemOpened(false);
     } catch (err: any) {
       Alert.alert("Update failed", err?.message || "Could not update item.");
     }
@@ -359,6 +412,10 @@ export default function InventoryScreen() {
           Location:{" "}
           <Text className="text-green-700 font-medium">{locationLabel(item.location)}</Text>
         </Text>
+        <Text className="text-sm text-gray-500 mt-1">
+          Opened:{" "}
+          <Text className="text-green-700 font-medium">{item.opened ? "Yes" : "No"}</Text>
+        </Text>
       </View>
       <TouchableOpacity
         onPress={() => handleDeleteItem(item.id)}
@@ -396,15 +453,29 @@ export default function InventoryScreen() {
               <Text className="text-3xl font-extrabold text-white tracking-wider shadow-sm">My Inventory</Text>
               <Text className="text-green-100 text-xs font-medium tracking-widest uppercase">Manage Your Items</Text>
             </View>
+            <TouchableOpacity
+              onPress={togglePurchaseSort}
+              className="ml-auto flex-row items-center px-3 py-2 rounded-full bg-white/20 active:bg-white/30"
+            >
+              <Feather
+                name={purchaseSortDir === "asc" ? "arrow-up" : "arrow-down"}
+                size={16}
+                color="white"
+              />
+              <Text className="text-white text-xs font-semibold ml-2">
+                Purchase {purchaseSortDir === "asc" ? "Asc" : "Desc"}
+              </Text>
+            </TouchableOpacity>
           </View>
         </View>
 
         {/* List Content */}
         <View className="flex-1 px-4">
           <FlatList
-            data={items}
+            data={sortedItems}
             renderItem={renderItem}
             keyExtractor={(item: InventoryItem) => item.id}
+            extraData={purchaseSortDir}
             contentContainerStyle={{ paddingBottom: 100, paddingTop: 10 }}
             showsVerticalScrollIndicator={false}
             ListEmptyComponent={
@@ -479,6 +550,33 @@ export default function InventoryScreen() {
                         <TouchableOpacity
                           key={option.value}
                           onPress={() => setNewItemLocation(option.value)}
+                          className={`flex-1 h-12 items-center justify-center rounded-xl border ${
+                            isSelected
+                              ? "bg-[#D9AC68] border-[#C9974F]"
+                              : "bg-gray-50 border-gray-200"
+                          }`}
+                        >
+                          <Text className={`${isSelected ? "text-white" : "text-gray-700"} font-semibold text-sm`}>
+                            {option.label}
+                          </Text>
+                        </TouchableOpacity>
+                      );
+                    })}
+                  </View>
+                </View>
+
+                <View>
+                  <Text className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2 ml-1">Opened</Text>
+                  <View className="flex-row gap-2">
+                    {[
+                      { label: "No", value: false },
+                      { label: "Yes", value: true },
+                    ].map((option) => {
+                      const isSelected = newItemOpened === option.value;
+                      return (
+                        <TouchableOpacity
+                          key={option.label}
+                          onPress={() => setNewItemOpened(option.value)}
                           className={`flex-1 h-12 items-center justify-center rounded-xl border ${
                             isSelected
                               ? "bg-[#D9AC68] border-[#C9974F]"
@@ -578,6 +676,33 @@ export default function InventoryScreen() {
                         <TouchableOpacity
                           key={option.value}
                           onPress={() => setEditItemLocation(option.value)}
+                          className={`flex-1 h-12 items-center justify-center rounded-xl border ${
+                            isSelected
+                              ? "bg-[#D9AC68] border-[#C9974F]"
+                              : "bg-gray-50 border-gray-200"
+                          }`}
+                        >
+                          <Text className={`${isSelected ? "text-white" : "text-gray-700"} font-semibold text-sm`}>
+                            {option.label}
+                          </Text>
+                        </TouchableOpacity>
+                      );
+                    })}
+                  </View>
+                </View>
+
+                <View>
+                  <Text className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2 ml-1">Opened</Text>
+                  <View className="flex-row gap-2">
+                    {[
+                      { label: "No", value: false },
+                      { label: "Yes", value: true },
+                    ].map((option) => {
+                      const isSelected = editItemOpened === option.value;
+                      return (
+                        <TouchableOpacity
+                          key={option.label}
+                          onPress={() => setEditItemOpened(option.value)}
                           className={`flex-1 h-12 items-center justify-center rounded-xl border ${
                             isSelected
                               ? "bg-[#D9AC68] border-[#C9974F]"
