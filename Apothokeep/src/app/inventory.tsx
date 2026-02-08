@@ -207,9 +207,20 @@ export default function InventoryScreen() {
 
       <SafeAreaView className="flex-1">
         {/* Header */}
+        {/* Header */}
         <View className="px-6 py-4 mb-2">
-          <Text className="text-3xl font-extrabold text-white tracking-wider shadow-sm">My Inventory</Text>
-          <Text className="text-green-100 text-xs font-medium tracking-widest uppercase">Manage Your Items</Text>
+          <View className="flex-row items-center mb-2">
+            <TouchableOpacity
+              onPress={() => router.push('/')}
+              className="mr-4 w-10 h-10 rounded-full bg-white/20 items-center justify-center active:bg-white/30"
+            >
+              <Feather name="chevron-left" size={24} color="white" />
+            </TouchableOpacity>
+            <View>
+              <Text className="text-3xl font-extrabold text-white tracking-wider shadow-sm">My Inventory</Text>
+              <Text className="text-green-100 text-xs font-medium tracking-widest uppercase">Manage Your Items</Text>
+            </View>
+          </View>
         </View>
 
         {/* List Content */}
