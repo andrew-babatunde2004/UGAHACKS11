@@ -75,15 +75,8 @@ const CameraView = () => {
           </TouchableOpacity>
         </View>
 
-        {/* Bottom Section: Take Picture Button */}
-        <View className="items-center pb-8">
-          <TouchableOpacity
-            onPress={takePicture}
-            className="w-20 h-20 rounded-full border-4 border-white items-center justify-center"
-          >
-            <View className="w-16 h-16 rounded-full bg-white" />
-          </TouchableOpacity>
-        </View>
+        {/* Bottom spacer to preserve layout without a shutter button */}
+        <View className="items-center pb-8" />
       </SafeAreaView>
     </>
   );
