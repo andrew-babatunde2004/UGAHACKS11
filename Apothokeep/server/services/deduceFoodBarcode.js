@@ -38,7 +38,7 @@ async function chooseFoodstuffFromBarcode(barcodeJson, categoriesJson, foodstuff
     // Get all elements from foodstuffDictionary that match the chosen categoryID
     // Calculate where to start in the sorted dictionary
 
-    constIdInt = parseInt(categoryId);
+    const catIdInt = parseInt(categoryId);
 
     // Sum all counts in elementsPerCategory up to (catIdInt - 1)
     const startIndex = elementsPerCategory.slice(0, catIdInt - 1).reduce((acc, val) => acc + val, 0);
