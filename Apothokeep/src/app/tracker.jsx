@@ -1,20 +1,15 @@
 import { ImageBackground } from "react-native";
 import React, { useState, useEffect } from "react";
 import { View, Text, StyleSheet, FlatList, Dimensions, ScrollView, TouchableOpacity } from "react-native";
-import { router } from "expo-router";
+import { router, useFocusEffect } from "expo-router";
 import { Feather } from "@expo/vector-icons";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 // ------------------- Types & Mock Data -------------------
 
-const MOCK_ITEMS = [
-  { id: "1", name: "Expired Milk", expirationDate: "2023-10-01" }, // Expired (assuming today is > 2023)
-  { id: "2", name: "Yogurt", expirationDate: "2026-02-09" },       // Expiring Soon (if close to today)
-  { id: "3", name: "Fresh Apples", expirationDate: "2027-01-01" },  // Fresh
-  { id: "4", name: "Old Bread", expirationDate: "2027-12-25" },    // Expired
-  { id: "5", name: "Chicken", expirationDate: "2024-02-08" },      // Expiring Soon
-  { id: "6", name: "Rice", expirationDate: "2025-06-15" },         // Fresh
-];
+const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL ?? "http://localhost:3000";
+
+
 
 // Freshness Constants
 const SEVEN_DAYS = 7 * 24 * 60 * 60 * 1000;
@@ -50,6 +45,8 @@ const PIE_SIZE = 280;
 
 // Individual Slice Component
 const PieSlice = ({ color, angle, startAngle, radius }) => {
+  if (angle <= 0) return null;
+
   // We can only draw up to 180 degrees with one semicircle clip.
   // If angle > 180, we need two slices.
   if (angle > 180) {
@@ -61,31 +58,15 @@ const PieSlice = ({ color, angle, startAngle, radius }) => {
     );
   }
 
-  // The logic for a slice <= 180:
-  // 1. Container rotated by `startAngle`.
-  // 2. Clipper (Right half) allowing us to see 0-180 of the content.
-  // 3. Content (Circle) rotated by `angle - 180`.
-  //    - At 180 deg (full semicircle), rotation is 0. We see 0-180.
-  //    - At 90 deg, rotation is -90. We see -90 to 90? No.
-  //    - Let's visualize: 
-  //      Right Half Clipper shows angles [0, 180] (assuming 0 is top, clockwise).
-  //      Content Circle starts at 0.
-  //      If we rotate Content by -90:
-  //      The segment [0, 90] of the content moves to [-90, 0]. Not visible.
-  //      The segment [90, 180] moves to [0, 90]. Visible.
-  //      So a -90 rotation shows the LAST 90 degrees of the semicircle.
-  //      Wait, we want the FIRST `angle` degrees.
-  //      Maybe we need the Clipper to be the Left Half?
-  //      Or rotate differently.
-
-  // Let's stick to the proven formula:
-  // Rotation = angle - 180?
-  // If angle 30. Rot = -150.
-  // Semicircle (0-180).
-  // Rotated (-150 to 30).
-  // Visible region (0 to 180).
-  // Intersection (0 to 30).
-  // This gives us the slice starting at 0, size 30.
+  // Robust Algorithm for Web/Native Compatibility:
+  // 1. "RightClipper": A window showing only the Right Hemisphere (0 to 180 degrees).
+  // 2. "Rotator": A Container rotated by `angle` degrees.
+  // 3. "LeftSlice": A Left Hemisphere (180 to 360 degrees) inside the Rotator.
+  //
+  // Logic:
+  // - Initially (angle=0): LeftSlice is at 180-360. No overlap with RightClipper (0-180).
+  // - Rotate by 'a': LeftSlice moves to [180+a, 360+a] -> equivalent to [180+a, a].
+  // - Intersection with [0, 180] is exactly [0, a]. Perfect slice.
 
   return (
     <View
@@ -98,7 +79,37 @@ const PieSlice = ({ color, angle, startAngle, radius }) => {
         },
       ]}
     >
-      <Text>Edit app/index.tsx to edit this screen.</Text>
+      {/* Right Clipper (0 to 180 zone) */}
+      <View style={{
+        width: radius,
+        height: radius * 2,
+        position: 'absolute',
+        left: radius, // Positioned on the right half
+        top: 0,
+        overflow: 'hidden',
+      }}>
+        {/* Rotator: Rotates the content into the view */}
+        <View style={{
+          width: radius * 2,
+          height: radius * 2,
+          position: 'absolute',
+          left: -radius, // Shift back so center aligns
+          top: 0,
+          transform: [{ rotate: `${angle}deg` }],
+        }}>
+          {/* Left Slice (The colored semi-circle) */}
+          <View style={{
+            width: radius,
+            height: radius * 2,
+            position: 'absolute',
+            left: 0, // Occupies the left half of the Rotator
+            top: 0,
+            backgroundColor: color,
+            borderTopLeftRadius: radius,
+            borderBottomLeftRadius: radius,
+          }} />
+        </View>
+      </View>
     </View>
   );
 };
@@ -107,8 +118,8 @@ const PieChart = ({ counts }) => {
   const total = counts.expired + counts.soon + counts.fresh;
   if (total === 0) {
     return (
-      <View style={[styles.chartContainer, { width: PIE_SIZE, height: PIE_SIZE }]}>
-        <Text>No Data</Text>
+      <View style={[styles.chartContainer, { width: PIE_SIZE, height: PIE_SIZE, justifyContent: 'center', alignItems: 'center' }]}>
+        <Text style={{ color: '#6B7280', fontSize: 16, fontWeight: '600' }}>No Data</Text>
       </View>
     );
   }
@@ -148,8 +159,8 @@ const PieChart = ({ counts }) => {
             radius={PIE_SIZE / 2}
           />
         ))}
-        {/* Inner White Circle to make it a Donut (Optional, looks nicer) 
-                User asked for "Circle Graph", commonly Pie. 
+        {/* Inner White Circle to make it a Donut (Optional, looks nicer)
+                User asked for "Circle Graph", commonly Pie.
                 If they want Donut, we add this. Let's make it a Pie as requested (solid).
                 If I leave it solid, it's a Pie.
             */}
@@ -176,8 +187,34 @@ const PieChart = ({ counts }) => {
 
 
 export default function Tracker() {
-  const [items, setItems] = useState(MOCK_ITEMS);
+  const [items, setItems] = useState([]);
   const [counts, setCounts] = useState({ expired: 0, soon: 0, fresh: 0 });
+
+  const fetchData = React.useCallback(() => {
+    fetch(`${API_BASE_URL}/foodstuff`)
+      .then(r => r.json())
+      .then(data => {
+        // Handle both array and object response (just in case)
+        const list = Array.isArray(data) ? data : data?.items ?? [];
+
+        // Normalize the data (map _id to id if needed, handle dates)
+        const normalizedItems = list.map(item => ({
+          id: item._id || item.id,
+          name: item.name,
+          expirationDate: item.expirationDate ? new Date(item.expirationDate).toISOString().split('T')[0] : "Unknown",
+          ...item
+        }));
+
+        setItems(normalizedItems);
+      })
+      .catch(e => console.log("ERR:", e));
+  }, []);
+
+  useFocusEffect(
+    React.useCallback(() => {
+      fetchData();
+    }, [fetchData])
+  );
 
   useEffect(() => {
     let exp = 0;
@@ -196,6 +233,7 @@ export default function Tracker() {
 
   const renderItem = ({ item }) => {
     const { status, color } = getFreshness(item.expirationDate);
+
 
     return (
       <View style={[styles.itemBlock, { backgroundColor: color + "20", borderColor: color }]}>
@@ -276,14 +314,20 @@ const styles = StyleSheet.create({
     color: "#1F2937",
   },
   chartSection: {
-    backgroundColor: "#b2a3e5a1",
-    borderRadius: 20,
-    padding: 20,
+    backgroundColor: "rgba(224, 215, 251, 1)",
+    borderRadius: 24,
+    padding: 24,
     marginBottom: 24,
     alignItems: "center",
-    justifyContent: 'center',
-    minHeight: 320, // Enough space for chart + legend
+    justifyContent: "center",
+    minHeight: 320,
+    borderWidth: 1,
+    borderColor: "rgba(180,120,255,0.4)",
+    shadowColor: "#a855f7",
+    shadowOpacity: 0.6,
+    shadowRadius: 20,
   },
+
   chartWrapper: {
     alignItems: 'center',
     justifyContent: 'center',
