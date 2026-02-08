@@ -7,7 +7,7 @@ import { cssInterop } from "react-native-css-interop";
 import { router } from "expo-router";
 
 // websocket url for backend commuication (doBS)
-const WS_URL = "ws://192.168.1.42:8080/scan"; // change to laptop IP
+const WS_URL = "ws://172.20.108.250:8080"; // change to laptop IP
 
 // We wrap the camera logic to prevent top-level imports of react-native-vision-camera
 // which crashes on the web even if the component isn't rendered.
@@ -23,7 +23,7 @@ const CameraView = () => {
   const [isActive, setIsActive] = React.useState(true);
 
   // websocket ref
-  const wsRef = useRef<WebSocket | null>(null);
+  const wsRef = useRef(null);
 
     React.useEffect(() => {
     const ws = new WebSocket(WS_URL);
@@ -56,21 +56,14 @@ const CameraView = () => {
         if (code.value === lastScannedRef.current) continue;
 
         lastScannedRef.current = code.value;
-        const res = await fetch(
-          `https://world.openfoodfacts.org/api/v0/product/${code.value}.json?fields=brands,categories`
-        );
-
-        const data = await res.json();
-
-        // send data to backend via websocket 
+        // send barcode to backend via websocket
         const ws = wsRef.current;
         if (ws && ws.readyState === WebSocket.OPEN) {
-          ws.send(JSON.stringify({ type: "SCAN", payload: data }));
+          ws.send(JSON.stringify({ type: "barcode_scan", barcode: code.value, location: 0, opened: false }));
         } else {
           console.log("WS not open; readyState =", ws?.readyState);
         }
 
-        console.log(data);
         router.push("/inventory");
         setIsActive(false);
       }
