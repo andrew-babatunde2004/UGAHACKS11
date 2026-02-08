@@ -168,8 +168,21 @@ export default function InventoryScreen() {
   };
 
   // Function to delete an item
-  const handleDeleteItem = (id: string) => {
-    setItems(items.filter((item: InventoryItem) => item.id !== id));
+  const handleDeleteItem = async (id: string) => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/foodstuff/${id}`, {
+        method: "DELETE",
+      });
+
+      if (!response.ok) {
+        const errorBody = await response.json().catch(() => null);
+        throw new Error(errorBody?.error || `Request failed (${response.status})`);
+      }
+
+      setItems((prevItems) => prevItems.filter((item) => item.id !== id));
+    } catch (err: any) {
+      Alert.alert("Delete failed", err?.message || "Could not delete item.");
+    }
   };
 
   // Render individual item

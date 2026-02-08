@@ -71,7 +71,12 @@ export default function Index() {
 
         {/* Footer */}
         <View className="items-center pb-8 relative">
-          <Text className="text-xs text-gray-400 font-medium absolute bottom-2">v1.0.0 • Made for UGAHacks</Text>
+          <Text
+            className="text-xs text-gray-400 font-medium absolute"
+            style={{ bottom: "-10%" }}
+          >
+            v1.0.0 • Made for UGAHacks
+          </Text>
         </View>
       </SafeAreaView>
     </View>
