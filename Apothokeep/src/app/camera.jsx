@@ -54,18 +54,14 @@ const CameraView = () => {
 
   return (
     <>
-      <SafeAreaView className="flex-1">
-
-        <Camera
-          ref={camera}
-          codeScanner={codeScanner}
-          photo={true}
-          className="flex-1"
-          device={device}
-          isActive
-        />
-
-      </SafeAreaView>
+      <Camera
+        ref={camera}
+        codeScanner={codeScanner}
+        photo={true}
+        style={StyleSheet.absoluteFill}
+        device={device}
+        isActive={isActive}
+      />
 
       {/* Overlay Controls */}
       <SafeAreaView className="absolute w-full h-full flex-col justify-between p-6" pointerEvents="box-none">

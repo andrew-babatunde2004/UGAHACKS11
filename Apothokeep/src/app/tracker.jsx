@@ -1,6 +1,7 @@
 import { ImageBackground } from "react-native";
 import React, { useState, useEffect } from "react";
-import { View, Text, StyleSheet, FlatList, Dimensions, ScrollView } from "react-native";
+import { View, Text, StyleSheet, FlatList, Dimensions, ScrollView, TouchableOpacity } from "react-native";
+import { router } from "expo-router";
 import { Feather } from "@expo/vector-icons";
 import { SafeAreaView } from "react-native-safe-area-context";
 
@@ -238,6 +239,7 @@ export default function Tracker() {
   };
 
   return (
+<<<<<<< HEAD
     <SafeAreaView style={styles.safeArea}>
       <View style={styles.container}>
         <Text style={styles.headerTitle}>Freshness Tracker</Text>
@@ -248,6 +250,41 @@ export default function Tracker() {
           <FlatList data={items} renderItem={renderItem} keyExtractor={item => item._id}
             contentContainerStyle={styles.listContent} showsVerticalScrollIndicator={false} />
         </View> </View> </SafeAreaView>
+=======
+    <ImageBackground
+      source={{
+        uri: ("https://images.fineartamerica.com/images/artworkimages/mediumlarge/2/old-books-in-library-shelf-luoman.jpg")
+      }}
+      style={{ flex: 1 }}
+      resizeMode="cover" >
+      <SafeAreaView style={styles.safeArea}>
+        <View style={styles.container}>
+
+          <View style={styles.headerRow}>
+            <TouchableOpacity onPress={() => router.push('/')} style={styles.backButton}>
+              <Feather name="chevron-left" size={24} color="#1F2937" />
+            </TouchableOpacity>
+            <Text style={styles.headerTitleText}>Freshness Tracker</Text>
+          </View>
+
+          <View style={styles.chartSection}>
+            <PieChart counts={counts} />
+          </View>
+
+          <View style={styles.listSection}>
+            <Text style={styles.sectionTitle}>Tracked Foods</Text>
+            <FlatList
+              data={items}
+              renderItem={renderItem}
+              keyExtractor={item => item.id}
+              contentContainerStyle={styles.listContent}
+              showsVerticalScrollIndicator={false}
+            />
+          </View>
+        </View>
+      </SafeAreaView>
+    </ImageBackground >
+>>>>>>> 56ccc814932580f6d41d23968c2b5f2af6976d57
   );
 }
 
@@ -260,12 +297,24 @@ const styles = StyleSheet.create({
     flex: 1,
     padding: 20,
   },
-  headerTitle: {
+  headerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 20,
+  },
+  backButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: 'rgba(255,255,255,0.5)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 12,
+  },
+  headerTitleText: {
     fontSize: 28,
     fontWeight: "800",
     color: "#1F2937",
-    marginBottom: 20,
-    textAlign: "center",
   },
   chartSection: {
     backgroundColor: "rgba(224, 215, 251, 1)",
