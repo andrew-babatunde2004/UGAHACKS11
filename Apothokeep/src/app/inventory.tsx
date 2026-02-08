@@ -45,6 +45,42 @@ export default function InventoryScreen() {
     return date.toLocaleDateString();
   };
 
+  const toLocalISOString = (date: Date) => {
+    // Preserve local wall time when converting to ISO string
+    const offsetMs = date.getTimezoneOffset() * 60 * 1000;
+    return new Date(date.getTime() - offsetMs).toISOString();
+  };
+
+  const parseRelativeExpiration = (input: string): Date | null => {
+    // Supports: "1 week", "4 days", "2 weeks", "in 3 months"
+    const match = input
+      .toLowerCase()
+      .trim()
+      .match(/^(?:in\s+)?(\d+)\s*(day|days|week|weeks|month|months|year|years)$/);
+    if (!match) return null;
+
+    const amount = Number(match[1]);
+    if (!Number.isFinite(amount) || amount <= 0) return null;
+
+    const unit = match[2];
+    const now = new Date();
+    const result = new Date(now);
+
+    if (unit.startsWith("day")) {
+      result.setDate(now.getDate() + amount);
+    } else if (unit.startsWith("week")) {
+      result.setDate(now.getDate() + amount * 7);
+    } else if (unit.startsWith("month")) {
+      result.setMonth(now.getMonth() + amount);
+    } else if (unit.startsWith("year")) {
+      result.setFullYear(now.getFullYear() + amount);
+    } else {
+      return null;
+    }
+
+    return result;
+  };
+
   const fetchInventory = useCallback(async () => {
     try {
       const response = await fetch(`${API_BASE_URL}/foodstuff`);
@@ -110,11 +146,14 @@ export default function InventoryScreen() {
       return;
     }
 
-    let expirationDateForDb = new Date().toISOString();
+    let expirationDateForDb = toLocalISOString(new Date());
     if (trimmedExpiration) {
       let parsedExpiration: Date;
-      // If user enters a date-only string, treat it as end-of-day local time
-      if (/^\d{4}-\d{2}-\d{2}$/.test(trimmedExpiration)) {
+      const relativeExpiration = parseRelativeExpiration(trimmedExpiration);
+      if (relativeExpiration) {
+        parsedExpiration = relativeExpiration;
+      } else if (/^\d{4}-\d{2}-\d{2}$/.test(trimmedExpiration)) {
+        // If user enters a date-only string, treat it as end-of-day local time
         parsedExpiration = new Date(`${trimmedExpiration}T23:59:59.999`);
       } else {
         parsedExpiration = new Date(trimmedExpiration);
@@ -122,11 +161,11 @@ export default function InventoryScreen() {
       if (Number.isNaN(parsedExpiration.getTime())) {
         Alert.alert(
           "Invalid date",
-          "Please use a valid date (e.g. 2024-12-31)."
+          "Use a date (e.g. 2024-12-31) or a duration like 1 week, 4 days."
         );
         return;
       }
-      expirationDateForDb = parsedExpiration.toISOString();
+      expirationDateForDb = toLocalISOString(parsedExpiration);
     }
 
     try {
@@ -136,7 +175,7 @@ export default function InventoryScreen() {
         body: JSON.stringify({
           name: trimmedName,
           opened: false,
-          purchaseDate: new Date().toISOString(),
+          purchaseDate: toLocalISOString(new Date()),
           expirationDate: expirationDateForDb,
           location: 0,
         }),
