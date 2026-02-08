@@ -211,7 +211,7 @@ export default function Tracker() {
     let fresh = 0;
 
     items.forEach(item => {
-      const { status } = <Text>{status} • {item.expirationDate}</Text>
+      const { status } = getFreshness(item.expirationDate);
       if (status === "Expired") exp++;
       else if (status === "Expiring Soon") soon++;
       else fresh++;
@@ -221,7 +221,7 @@ export default function Tracker() {
   }, [items]);
 
   const renderItem = ({ item }) => {
-    const { status, color } = getFreshness(item.expiryDate);
+    const { status, color } = getFreshness(item.expirationDate);
 
 
     return (
