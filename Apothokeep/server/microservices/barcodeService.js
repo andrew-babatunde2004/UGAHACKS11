@@ -72,10 +72,16 @@ wss.on("connection", (ws, req) => {
         throw new Error("Global fetch is not available in this Node runtime");
       }
 
-      const res = await fetch(
+      /**const res = await fetch(
         `https://world.openfoodfacts.org/api/v0/product/${barcode}.json?fields=brands,categories`
       );
+      const barcodeJson = await res.json();*/
+
+      const res = await fetch(
+      `https://world.openfoodfacts.org/api/v2/product/${barcode}.json` +
+      `?fields=brands,product_name,categories,categories_tags`);
       const barcodeJson = await res.json();
+
 
       const row = await chooseFoodstuffFromBarcode(barcodeJson);
       if (!row) {
