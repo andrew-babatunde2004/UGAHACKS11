@@ -60,12 +60,20 @@ const CameraView = () => {
         const ws = wsRef.current;
         if (ws && ws.readyState === WebSocket.OPEN) {
           ws.send(JSON.stringify({ type: "barcode_scan", barcode: code.value, location: 0, opened: false }));
+
+          // Wait briefly for acknowledgment, then close connection and navigate
+          setTimeout(() => {
+            if (ws.readyState === WebSocket.OPEN) {
+              ws.close();
+            }
+            setIsActive(false);
+            router.push("/inventory");
+          }, 500);
         } else {
           console.log("WS not open; readyState =", ws?.readyState);
+          setIsActive(false);
+          router.push("/inventory");
         }
-
-        router.push("/inventory");
-        setIsActive(false);
       }
     },
   });

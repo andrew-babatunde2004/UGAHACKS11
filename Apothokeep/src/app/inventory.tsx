@@ -34,7 +34,6 @@ export default function InventoryScreen() {
   const router = useRouter();
   // Start with empty inventory
   const [items, setItems] = useState<InventoryItem[]>([]);
-  const [result, setResult] = useState('test camera');
   const API_BASE_URL =
     process.env.EXPO_PUBLIC_API_URL ?? "http://localhost:3000";
 
@@ -52,6 +51,7 @@ export default function InventoryScreen() {
   const [editItemLocation, setEditItemLocation] = useState<0 | 1 | 2>(0);
   const [editItemOpened, setEditItemOpened] = useState(false);
   const [purchaseSortDir, setPurchaseSortDir] = useState<"asc" | "desc">("asc");
+  const [isLoading, setIsLoading] = useState(false);
 
   const locationLabel = (location: 0 | 1 | 2) => {
     if (location === 1) return "Refrigerator";
@@ -203,6 +203,8 @@ export default function InventoryScreen() {
 
   // Function to add a new item
   const handleAddItem = async () => {
+    if (isLoading) return; // Prevent duplicate submissions
+
     const trimmedName = newItemName.trim();
     const trimmedExpiration = newItemExpiration.trim();
 
@@ -218,6 +220,7 @@ export default function InventoryScreen() {
       expirationDateForDb = toLocalISOString(parsedExpiration);
     }
 
+    setIsLoading(true);
     try {
       const response = await fetch(`${API_BASE_URL}/foodstuff`, {
         method: "POST",
@@ -237,6 +240,8 @@ export default function InventoryScreen() {
       }
 
       const savedItem = await response.json();
+
+      // Only update state after successful server response
       const newItem: InventoryItem = {
         id: savedItem?._id?.toString() ?? Date.now().toString(),
         name: savedItem?.name ?? trimmedName,
@@ -262,6 +267,8 @@ export default function InventoryScreen() {
       setModalVisible(false);
     } catch (err: any) {
       Alert.alert("Save failed", err?.message || "Could not save item.");
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -280,8 +287,15 @@ export default function InventoryScreen() {
       const ddNum = Number(dd);
       let yyyy = Number(yearRaw);
       if (yearRaw.length === 2) {
-        // Interpret 00-69 as 2000-2069, 70-99 as 1970-1999
-        yyyy = yyyy + (yyyy <= 69 ? 2000 : 1900);
+        // Use sliding window: 2-digit year is interpreted relative to current year
+        // e.g., in 2026: 26-75 -> 2026-2075, 76-25 -> 1976-2025
+        const currentYear = new Date().getFullYear();
+        const currentCentury = Math.floor(currentYear / 100) * 100;
+        // If within 50 years forward, use current century; otherwise previous century
+        yyyy = currentCentury + yyyy;
+        if (yyyy - currentYear > 50) {
+          yyyy -= 100;
+        }
       }
       parsed = new Date(yyyy, mmNum - 1, ddNum, 23, 59, 59, 999);
     } else {
@@ -298,7 +312,8 @@ export default function InventoryScreen() {
   };
 
   const handleUpdateItem = async () => {
-    if (!editItemId) return;
+    if (isLoading || !editItemId) return; // Prevent duplicate submissions
+
     const trimmedName = editItemName.trim();
     if (!trimmedName) {
       Alert.alert("Missing name", "Please enter an item name.");
@@ -318,6 +333,7 @@ export default function InventoryScreen() {
     if (parsedPurchase) payload.purchaseDate = toLocalISOString(parsedPurchase);
     if (parsedExpiration) payload.expirationDate = toLocalISOString(parsedExpiration);
 
+    setIsLoading(true);
     try {
       const response = await fetch(`${API_BASE_URL}/foodstuff/${editItemId}`, {
         method: "PATCH",
@@ -330,8 +346,9 @@ export default function InventoryScreen() {
         throw new Error(errorBody?.error || `Request failed (${response.status})`);
       }
 
-      const savedItem = await response.json().catch(() => null);
+      const savedItem = await response.json();
 
+      // Only update state after successful server response
       setItems((prev) =>
         prev.map((item) =>
           item.id === editItemId
@@ -368,6 +385,8 @@ export default function InventoryScreen() {
       setEditItemOpened(false);
     } catch (err: any) {
       Alert.alert("Update failed", err?.message || "Could not update item.");
+    } finally {
+      setIsLoading(false);
     }
   };
 
