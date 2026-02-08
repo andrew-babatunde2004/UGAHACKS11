@@ -24,6 +24,7 @@ interface InventoryItem {
   name: string;
   purchaseDate: string;
   expirationDate: string;
+  location: 0 | 1 | 2;
 }
 
 export default function InventoryScreen() {
@@ -38,11 +39,19 @@ export default function InventoryScreen() {
   const [modalVisible, setModalVisible] = useState(false);
   const [newItemName, setNewItemName] = useState("");
   const [newItemExpiration, setNewItemExpiration] = useState("");
+  const [newItemLocation, setNewItemLocation] = useState<0 | 1 | 2>(0);
   const [editModalVisible, setEditModalVisible] = useState(false);
   const [editItemId, setEditItemId] = useState<string | null>(null);
   const [editItemName, setEditItemName] = useState("");
   const [editPurchaseDate, setEditPurchaseDate] = useState("");
   const [editExpirationDate, setEditExpirationDate] = useState("");
+  const [editItemLocation, setEditItemLocation] = useState<0 | 1 | 2>(0);
+
+  const locationLabel = (location: 0 | 1 | 2) => {
+    if (location === 1) return "Refrigerator";
+    if (location === 2) return "Freezer";
+    return "Pantry";
+  };
 
   const formatExpirationDate = (value?: string) => {
     if (!value) return "No Date";
@@ -92,6 +101,7 @@ export default function InventoryScreen() {
     setEditItemName(item.name);
     setEditPurchaseDate(item.purchaseDate);
     setEditExpirationDate(item.expirationDate);
+    setEditItemLocation(item.location);
     setEditModalVisible(true);
   };
 
@@ -111,6 +121,7 @@ export default function InventoryScreen() {
           name: item?.name ?? "Unnamed item",
           purchaseDate: formatExpirationDate(item?.purchaseDate),
           expirationDate: formatExpirationDate(item?.expirationDate),
+          location: (item?.location ?? 0) as 0 | 1 | 2,
         }));
       setItems(normalized);
     } catch (err: any) {
@@ -177,7 +188,7 @@ export default function InventoryScreen() {
           opened: false,
           purchaseDate: toLocalISOString(new Date()),
           expirationDate: expirationDateForDb,
-          location: 0,
+          location: newItemLocation,
         }),
       });
 
@@ -203,6 +214,7 @@ export default function InventoryScreen() {
       // Reset and close modal
       setNewItemName("");
       setNewItemExpiration("");
+      setNewItemLocation(0);
       setModalVisible(false);
     } catch (err: any) {
       Alert.alert("Save failed", err?.message || "Could not save item.");
@@ -256,6 +268,7 @@ export default function InventoryScreen() {
 
     const payload: Record<string, any> = {
       name: trimmedName,
+      location: editItemLocation,
     };
     if (parsedPurchase) payload.purchaseDate = toLocalISOString(parsedPurchase);
     if (parsedExpiration) payload.expirationDate = toLocalISOString(parsedExpiration);
@@ -288,6 +301,7 @@ export default function InventoryScreen() {
                   savedItem?.expirationDate ??
                     (parsedExpiration ? parsedExpiration.toISOString() : item.expirationDate)
                 ),
+                location: (savedItem?.location ?? editItemLocation) as 0 | 1 | 2,
               }
             : item
         )
@@ -298,6 +312,7 @@ export default function InventoryScreen() {
       setEditItemName("");
       setEditPurchaseDate("");
       setEditExpirationDate("");
+      setEditItemLocation(0);
     } catch (err: any) {
       Alert.alert("Update failed", err?.message || "Could not update item.");
     }
@@ -339,6 +354,10 @@ export default function InventoryScreen() {
         <Text className="text-sm text-gray-500 mt-1">
           Expires:{" "}
           <Text className="text-green-700 font-medium">{item.expirationDate}</Text>
+        </Text>
+        <Text className="text-sm text-gray-500 mt-1">
+          Location:{" "}
+          <Text className="text-green-700 font-medium">{locationLabel(item.location)}</Text>
         </Text>
       </View>
       <TouchableOpacity
@@ -446,6 +465,34 @@ export default function InventoryScreen() {
                     onChangeText={setNewItemExpiration}
                   />
                 </View>
+
+                <View>
+                  <Text className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2 ml-1">Location</Text>
+                  <View className="flex-row gap-2">
+                    {[
+                      { label: "Pantry", value: 0 as const },
+                      { label: "Refrigerator", value: 1 as const },
+                      { label: "Freezer", value: 2 as const },
+                    ].map((option) => {
+                      const isSelected = newItemLocation === option.value;
+                      return (
+                        <TouchableOpacity
+                          key={option.value}
+                          onPress={() => setNewItemLocation(option.value)}
+                          className={`flex-1 h-12 items-center justify-center rounded-xl border ${
+                            isSelected
+                              ? "bg-[#D9AC68] border-[#C9974F]"
+                              : "bg-gray-50 border-gray-200"
+                          }`}
+                        >
+                          <Text className={`${isSelected ? "text-white" : "text-gray-700"} font-semibold text-sm`}>
+                            {option.label}
+                          </Text>
+                        </TouchableOpacity>
+                      );
+                    })}
+                  </View>
+                </View>
               </View>
 
               <View className="flex-row gap-4">
@@ -516,6 +563,34 @@ export default function InventoryScreen() {
                     value={editExpirationDate}
                     onChangeText={setEditExpirationDate}
                   />
+                </View>
+
+                <View>
+                  <Text className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2 ml-1">Location</Text>
+                  <View className="flex-row gap-2">
+                    {[
+                      { label: "Pantry", value: 0 as const },
+                      { label: "Refrigerator", value: 1 as const },
+                      { label: "Freezer", value: 2 as const },
+                    ].map((option) => {
+                      const isSelected = editItemLocation === option.value;
+                      return (
+                        <TouchableOpacity
+                          key={option.value}
+                          onPress={() => setEditItemLocation(option.value)}
+                          className={`flex-1 h-12 items-center justify-center rounded-xl border ${
+                            isSelected
+                              ? "bg-[#D9AC68] border-[#C9974F]"
+                              : "bg-gray-50 border-gray-200"
+                          }`}
+                        >
+                          <Text className={`${isSelected ? "text-white" : "text-gray-700"} font-semibold text-sm`}>
+                            {option.label}
+                          </Text>
+                        </TouchableOpacity>
+                      );
+                    })}
+                  </View>
                 </View>
               </View>
 

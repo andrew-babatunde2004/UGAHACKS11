@@ -12,7 +12,7 @@ const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL ?? "http://localhost:3000";
 
 
 // Freshness Constants
-const SEVEN_DAYS = 7 * 24 * 60 * 60 * 1000;
+const SEVEN_DAYS = 3 * 24 * 60 * 60 * 1000;
 
 // Colors
 const COLOR_EXPIRED = "#EF4444"; // Red-500
@@ -20,16 +20,36 @@ const COLOR_SOON = "#F97316";    // Orange-500
 const COLOR_FRESH = "#10B981";   // Emerald-500
 const COLOR_UNKNOWN = "#9CA3AF"; // Gray-400
 
+const locationLabel = (location) => {
+  if (location === 1) return "Refrigerator";
+  if (location === 2) return "Freezer";
+  return "Pantry";
+};
+
 // Helper: Determine status from date
 const getFreshness = (dateStr) => {
   const today = new Date();
-  const expDate = new Date(dateStr);
-  const diff = expDate - today;
+  let expDate;
 
-  if (isNaN(expDate.getTime())) return { status: "Unknown", color: COLOR_UNKNOWN };
+  if (typeof dateStr === "string") {
+    const trimmed = dateStr.trim();
+    const match = trimmed.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+    if (match) {
+      const year = Number(match[1]);
+      const month = Number(match[2]);
+      const day = Number(match[3]);
+      expDate = new Date(year, month - 1, day, 23, 59, 59, 999);
+    } else {
+      expDate = new Date(trimmed);
+    }
+  } else {
+    expDate = new Date(dateStr);
+  }
 
-  // Expired if date is BEFORE today (diff < 0)
-  // Soon if date is within 7 days from today
+  if (Number.isNaN(expDate.getTime())) return { status: "Unknown", color: COLOR_UNKNOWN };
+
+  const diff = expDate.getTime() - today.getTime();
+
   if (diff < 0) {
     return { status: "Expired", color: COLOR_EXPIRED };
   } else if (diff <= SEVEN_DAYS) {
@@ -189,6 +209,7 @@ const PieChart = ({ counts }) => {
 export default function Tracker() {
   const [items, setItems] = useState([]);
   const [counts, setCounts] = useState({ expired: 0, soon: 0, fresh: 0 });
+  const statusRank = { "Expired": 0, "Expiring Soon": 1, "Fresh": 2, "Unknown": 3 };
 
   const fetchData = React.useCallback(() => {
     fetch(`${API_BASE_URL}/foodstuff`)
@@ -198,12 +219,19 @@ export default function Tracker() {
         const list = Array.isArray(data) ? data : data?.items ?? [];
 
         // Normalize the data (map _id to id if needed, handle dates)
-        const normalizedItems = list.map(item => ({
-          id: item._id || item.id,
-          name: item.name,
-          expirationDate: item.expirationDate ? new Date(item.expirationDate).toISOString().split('T')[0] : "Unknown",
-          ...item
-        }));
+        const normalizedItems = list.map(item => {
+          const rawExpiration = item.expirationDate;
+          const expirationDate = rawExpiration
+            ? new Date(rawExpiration).toISOString().split('T')[0]
+            : "Unknown";
+
+          return {
+            ...item,
+            id: item._id || item.id,
+            name: item.name,
+            expirationDate,
+          };
+        });
 
         setItems(normalizedItems);
       })
@@ -243,6 +271,7 @@ export default function Tracker() {
         <View style={styles.itemInfo}>
           <Text style={styles.itemName}>{item.name}</Text>
           <Text style={[styles.itemDate, { color: color }]}>{status} • {item.expirationDate}</Text>
+          <Text style={styles.itemLocation}>Location: {locationLabel(item.location)}</Text>
         </View>
       </View>
     );
@@ -272,7 +301,16 @@ export default function Tracker() {
           <View style={styles.listSection}>
             <Text style={styles.sectionTitle}>Tracked Foods</Text>
             <FlatList
-              data={items}
+              data={[...items].sort((a, b) => {
+                const aStatus = getFreshness(a.expirationDate).status;
+                const bStatus = getFreshness(b.expirationDate).status;
+                const rankDiff = statusRank[aStatus] - statusRank[bStatus];
+                if (rankDiff !== 0) return rankDiff;
+                const aTime = new Date(a.expirationDate).getTime();
+                const bTime = new Date(b.expirationDate).getTime();
+                if (!Number.isNaN(aTime) && !Number.isNaN(bTime)) return aTime - bTime;
+                return 0;
+              })}
               renderItem={renderItem}
               keyExtractor={item => item.id}
               contentContainerStyle={styles.listContent}
@@ -416,5 +454,12 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: "500",
     marginTop: 2,
+  }
+  ,
+  itemLocation: {
+    fontSize: 12,
+    fontWeight: "500",
+    marginTop: 2,
+    color: "#374151",
   }
 });
