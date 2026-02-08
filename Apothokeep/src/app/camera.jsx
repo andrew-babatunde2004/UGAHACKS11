@@ -7,7 +7,7 @@ import { cssInterop } from "react-native-css-interop";
 import { router } from "expo-router";
 
 // websocket url for backend commuication (doBS)
-const WS_URL = "ws://172.20.108.250:8080"; // change to laptop IP
+const WS_URL = "ws://172.21.80.128:8080"; // change to laptop IP
 
 // We wrap the camera logic to prevent top-level imports of react-native-vision-camera
 // which crashes on the web even if the component isn't rendered.
