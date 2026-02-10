@@ -1,6 +1,6 @@
 # UGAHACKS11
 # Team Members
-Andvrew Babatunde,
+Andrew Babatunde,
 Uygar Safyurek,
 Lee Mcelhenney,
 Jonathan Anderson
